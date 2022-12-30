@@ -88,7 +88,7 @@ fi
 
 if test -d $WORKDIR/system/system/etc/init/magisk; then
     echo "Magisk is already installed."
-    echo "By continuing Magisk will reinstall itself, removing all the modules!"
+    echo "By continuing Magisk will reinstall itself!"
     read -p "Do you wish to continue? (y/n) " answer
     case "$answer" in
         [yY][eE][sS]|[yY]) 
@@ -150,10 +150,6 @@ cp $LIBDIR/libmagiskboot.so $WORKDIR/system/system/etc/init/magisk/magiskboot
 cp $LIBDIR/libmagiskinit.so $WORKDIR/system/system/etc/init/magisk/magiskinit
 cp $LIBDIR/libmagiskpolicy.so $WORKDIR/system/system/etc/init/magisk/magiskpolicy
 
-if [ $RESET == "1" ]; then
-    touch $WORKDIR/system/system/etc/init/magisk/.waydroid_reset
-fi
-
 X=$(cat /dev/urandom | tr -dc '[:alpha:]' | fold -w ${1:-20} | head -n 1)
 Y=$(cat /dev/urandom | tr -dc '[:alpha:]' | fold -w ${1:-20} | head -n 1)
 
@@ -196,9 +192,6 @@ service $Y /sbin/magisk --service
     oneshot
 
 on property:sys.boot_completed=1
-    if test -e system/etc/init/magisk/.waydroid_reset; then
-        rm -rf /data/adb/
-    fi
     mkdir /data/adb/magisk 755
     exec - root root -- /sbin/magisk --boot-complete
 
