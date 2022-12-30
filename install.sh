@@ -114,6 +114,7 @@ echo "SDK: $SDK"
 echo "ARCHITECTURE: $ARCH"
 echo "INSTRUCTIONS: $BITS"
 echo "SELINUX: $HAS_SELINUX"
+echo "KERNEL: $(uname -r)"
 echo "REINSTALLING: $RESET"
 
 LIBDIR="$WORKDIR/magisk/lib/$ARCH"
