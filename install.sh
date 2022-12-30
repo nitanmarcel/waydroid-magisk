@@ -14,24 +14,6 @@ if waydroid status | grep -q "RUNNING"; then
     exit 1
 fi
 
-ARCH="$(uname -m)"
-
-VARIANT=32
-
-
-if [ "$ARCH" = "aarch64" ]; then
-    ARCH="arm64-v8a"
-    VARIANT="64"
-fi
-
-if [ "$ARCH" = "armhf" ]; then
-    ARCH="armeabi-v7a"
-fi
-
-if [ "$ARCH" = "x86_64" ]; then
-    VARIANT="64"
-fi
-
 MAGISK="https://huskydg.github.io/download/magisk/25.2-delta-5.apk"
 WORKDIR="$(mktemp -d)"
 
@@ -41,7 +23,7 @@ mkdir "$WORKDIR/system" || true
 echo Downloading and unpacking Magisk Delta
 
 wget $MAGISK -qO "$WORKDIR/magisk/magisk.apk"
-unzip "$WORKDIR/magisk/magisk.apk" -d $WORKDIR/magisk/
+unzip -qq "$WORKDIR/magisk/magisk.apk" -d $WORKDIR/magisk/
 
 echo Detecting system.img location
 
@@ -61,9 +43,6 @@ if [ "$SYSTEM" = "none" ]; then
 fi
 
 echo "system.img detected at $SYSTEM"
-
-LIBDIR="$WORKDIR/magisk/lib/$ARCH"
-
 echo "Resizing system.img (current size + 100mb)"
 
 SYSTEM_SIZE="$(du -m $SYSTEM | cut -f 1)"
@@ -76,15 +55,40 @@ echo "Mounting system.img"
 
 mount -o rw,loop $SYSTEM $WORKDIR/system
 
-echo "Patching Waydroid"
-
 if test -d $WORKDIR/system/system/etc/init/magisk; then
-    echo "Magisk is already installed. To update it, open the Magisk Delta app, installation, and select the option direct install into system partition"
-    umount $WORKDIR/system
-    exit 1
+    echo "Magisk is already installed. Reinstalling..."
+    rm $WORKDIR/system/sbin -rf
+    rm $WORKDIR/system/system/etc/init/magisk -rf
+    sed -i '/on post-fs-data/,$d' $WORKDIR/system/system/etc/init/bootanim.rc
 fi
 
+ARCH=$(cat $WORKDIR/system/system/build.prop | grep ro.product.cpu.abi= | cut -d "=" -f2)
+BIT=32
+HAS_SELINUX="0"
+
+if test -e /sys/fs/selinux; then
+    HAS_SELINUX="1"
+fi
+
+if [ "$ARCH" = "arm64-v8a" ]; then
+    ARCH="arm64-v8a"
+    BITS="64"
+fi
+
+if [ "$ARCH" = "x86_64" ]; then
+    BITS="64"
+fi
+
+echo "Patching Waydroid"
+
+echo "ARCHITECTURE: $ARCH"
+echo "INSTRUCTIONS: $BITS"
+echo "SELINUX: $HAS_SELINUX"
+
+LIBDIR="$WORKDIR/magisk/lib/$ARCH"
+
 mkdir $WORKDIR/system/system/etc/init/magisk
+mkdir $WORKDIR/system/sbin
 
 if [ -e "$LIBDIR/libmagisk64.so" ]; then
     cp $LIBDIR/libmagisk64.so $WORKDIR/system/system/etc/init/magisk/magisk64
@@ -99,23 +103,19 @@ cp $LIBDIR/libmagiskboot.so $WORKDIR/system/system/etc/init/magisk/magiskboot
 cp $LIBDIR/libmagiskinit.so $WORKDIR/system/system/etc/init/magisk/magiskinit
 cp $LIBDIR/libmagiskpolicy.so $WORKDIR/system/system/etc/init/magisk/magiskpolicy
 
-mkdir $WORKDIR/system/sbin
-
 X=$(cat /dev/urandom | tr -dc '[:alpha:]' | fold -w ${1:-20} | head -n 1)
 Y=$(cat /dev/urandom | tr -dc '[:alpha:]' | fold -w ${1:-20} | head -n 1)
 
 cat <<EOT >> $WORKDIR/system/system/etc/init/bootanim.rc
 
-echo "Variant is $VARIANT"
-
 on post-fs-data
     start logd
     exec - root root -- /system/etc/init/magisk/mount-sbin.sh
-    copy /system/etc/init/magisk/magisk$VARIANT /sbin/magisk$VARIANT
-    chmod 0755 /sbin/magisk$VARIANT
-    symlink /sbin/magisk$VARIANT /sbin/magisk
-    exec - root root -- /system/etc/init/magisk/magisk$VARIANT --install
-    chmod 0755 /sbin/magisk$VARIANT
+    copy /system/etc/init/magisk/magisk$BITS /sbin/magisk$BITS
+    chmod 0755 /sbin/magisk$BITS
+    symlink /sbin/magisk$BITS /sbin/magisk
+    exec - root root -- /system/etc/init/magisk/magisk$BITS --install
+    chmod 0755 /sbin/magisk$BITS
     copy /system/etc/init/magisk/magiskinit /sbin/magiskinit
     chmod 0755 /sbin/magiskinit
     copy /system/etc/init/magisk/magiskpolicy /sbin/magiskpolicy
