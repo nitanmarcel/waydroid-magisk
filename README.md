@@ -29,9 +29,10 @@
 ## Does zygdisk work?
 * Zygdisk only works on devices with selinux enabled or by using Magisk Debug. Any attempt to enable it without selinux enabled or any other versions will crash Waydroid. (A fix is on it's way)
 
+## How is this different from the other scripts?
+* Runs Magisk Delta, a fork of Magisk with some reimplemented features such as magisk hide, and better support of Android emulators.
+* Follows the same instalation workflow as Magisk. This also allows users to update Magisk from withing the Magisk Delta Manager, instead of relying on the installer script from this repository
+
 ## What is Magisk Delta?
 * It's a fork of the official Magisk Manager, with the old Magisk Hide feature re-added to the app. Useful for us since we don't have zygdisk.
-* https://huskydg.github.io/magisk-files/docs/faq.html
-
-## How is this different from the other scripts?
-* I've tried my best to reproduce what magisk does when it installs itself. 
+* [Diffs to official Magisk](https://github.com/HuskyDG/magisk-files/blob/main/note_stable.md#diffs-to-official-magisk)
