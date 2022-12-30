@@ -64,10 +64,10 @@ echo "system.img detected at $SYSTEM"
 
 LIBDIR="$WORKDIR/magisk/lib/$ARCH"
 
-echo "Resizing system.img (current size + 50mb)"
+echo "Resizing system.img (current size + 100mb)"
 
 SYSTEM_SIZE="$(du -m $SYSTEM | cut -f 1)"
-SYSTEM_SIZE_SUM="$(echo $(expr "$SYSTEM_SIZE" + 50))"
+SYSTEM_SIZE_SUM="$(echo $(expr "$SYSTEM_SIZE" + 100))"
 
 fsck.ext4 -f $SYSTEM
 resize2fs $SYSTEM "$SYSTEM_SIZE_SUM"M
