@@ -64,12 +64,26 @@ ARCH=$(cat $WORKDIR/system/system/build.prop | grep ro.product.cpu.abi= | cut -d
 SDK=$(cat $WORKDIR/system/system/build.prop | grep ro.build.version.sdk= | cut -d "=" -f2)
 SUPPORTED_SDKS=(30)
 BIT=32
-HAS_SELINUX="0"
+SELINUX="0"
 
 if ! printf '%s\0' "${SUPPORTED_SDKS[@]}" | grep -Fxqz -- "$SDK"; then
     echo "SDK $SDK not supported"
     umount $WORKDIR/system
     exit 1
+fi
+
+if [ "$SELINUX" == "0" ]; then
+    echo "Magisk is not fully supported on kernels with SELinux disabled."
+    read -p "Do you wish to continue anyway? (y/n) " answer
+    case "$answer" in
+        [yY][eE][sS]|[yY]) 
+            echo " "
+            ;;
+        *)
+            umount $WORKDIR/system
+            exit 1
+            ;;
+    esac
 fi
 
 if test -d $WORKDIR/system/system/etc/init/magisk; then
@@ -79,6 +93,7 @@ if test -d $WORKDIR/system/system/etc/init/magisk; then
     case "$answer" in
         [yY][eE][sS]|[yY]) 
             echo "Reinstalling Magisk!"
+            echo " "
             ;;
         *)
             umount $WORKDIR/system
@@ -113,7 +128,7 @@ echo " "
 echo "SDK: $SDK"
 echo "ARCHITECTURE: $ARCH"
 echo "INSTRUCTIONS: $BITS"
-echo "SELINUX: $HAS_SELINUX"
+echo "SELINUX: $SELINUX"
 echo "KERNEL: $(uname -r)"
 echo "REINSTALLING: $RESET"
 
