@@ -27,8 +27,7 @@
 * Using Magisk Delta, we have an option to install Magisk dirrectly into the system partition. Always update from the magisk app, and not this script!
 
 ## Does zygdisk work?
-* Not yet. Looking into it in the future.
-* This also means that any modules that uses zygdisk won't work. (Riru, LSposed, etc.)
+* Zygdisk only works on devices with selinux enabled or by using Magisk Debug. Any attempt to enable it without selinux enabled or any other versions will crash Waydroid. (A fix is on it's way)
 
 ## What is Magisk Delta?
 * It's a fork of the official Magisk Manager, with the old Magisk Hide feature re-added to the app. Useful for us since we don't have zygdisk.
