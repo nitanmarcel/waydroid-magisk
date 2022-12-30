@@ -63,7 +63,7 @@ mount -o rw,loop $SYSTEM $WORKDIR/system
 ARCH=$(cat $WORKDIR/system/system/build.prop | grep ro.product.cpu.abi= | cut -d "=" -f2)
 SDK=$(cat $WORKDIR/system/system/build.prop | grep ro.build.version.sdk= | cut -d "=" -f2)
 SUPPORTED_SDKS=(30)
-BIT=32
+BITS=32
 SELINUX="0"
 
 if ! printf '%s\0' "${SUPPORTED_SDKS[@]}" | grep -Fxqz -- "$SDK"; then
