@@ -115,7 +115,6 @@ on post-fs-data
     chmod 0755 /sbin/magisk$VARIANT
     symlink /sbin/magisk$VARIANT /sbin/magisk
     exec - root root -- /system/etc/init/magisk/magisk$VARIANT --install
-    copy /system/etc/init/magisk/magisk32 /sbin/magisk$VARIANT
     chmod 0755 /sbin/magisk$VARIANT
     copy /system/etc/init/magisk/magiskinit /sbin/magiskinit
     chmod 0755 /sbin/magiskinit
