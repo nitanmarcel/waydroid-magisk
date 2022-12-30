@@ -60,6 +60,18 @@ echo " "
 
 mount -o rw,loop $SYSTEM $WORKDIR/system
 
+ARCH=$(cat $WORKDIR/system/system/build.prop | grep ro.product.cpu.abi= | cut -d "=" -f2)
+SDK=$(cat $WORKDIR/system/system/build.prop | grep ro.build.version.sdk= | cut -d "=" -f2)
+SUPPORTED_SDKS=(30)
+BIT=32
+HAS_SELINUX="0"
+
+if ! printf '%s\0' "${SUPPORTED_SDKS[@]}" | grep -Fxqz -- "$SDK"; then
+    echo "SDK $SDK not supported"
+    umount $WORKDIR/system
+    exit 1
+fi
+
 if test -d $WORKDIR/system/system/etc/init/magisk; then
     echo "Magisk is already installed."
     echo "By continuing Magisk will reinstall itself, removing all the modules!"
@@ -81,9 +93,6 @@ if test -d $WORKDIR/system/system/etc/init/magisk; then
     RESET="1"
 fi
 
-ARCH=$(cat $WORKDIR/system/system/build.prop | grep ro.product.cpu.abi= | cut -d "=" -f2)
-BIT=32
-HAS_SELINUX="0"
 
 if test -e /sys/fs/selinux; then
     HAS_SELINUX="1"
@@ -101,6 +110,7 @@ fi
 echo "Patching Waydroid"
 echo " "
 
+echo "SDK: $SDK"
 echo "ARCHITECTURE: $ARCH"
 echo "INSTRUCTIONS: $BITS"
 echo "SELINUX: $HAS_SELINUX"
