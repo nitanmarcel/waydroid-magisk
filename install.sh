@@ -16,16 +16,19 @@ fi
 
 MAGISK="https://huskydg.github.io/download/magisk/25.2-delta-5.apk"
 WORKDIR="$(mktemp -d)"
+RESET="0"
 
 mkdir "$WORKDIR/magisk" || true
 mkdir "$WORKDIR/system" || true
 
-echo Downloading and unpacking Magisk Delta
+echo "Downloading and unpacking Magisk Delta"
+echo " "
 
 wget $MAGISK -qO "$WORKDIR/magisk/magisk.apk"
 unzip -qq "$WORKDIR/magisk/magisk.apk" -d $WORKDIR/magisk/
 
-echo Detecting system.img location
+echo "Detecting system.img location"
+echo " "
 
 SYSTEM="none"
 
@@ -44,6 +47,7 @@ fi
 
 echo "system.img detected at $SYSTEM"
 echo "Resizing system.img (current size + 100mb)"
+echo " "
 
 SYSTEM_SIZE="$(du -m $SYSTEM | cut -f 1)"
 SYSTEM_SIZE_SUM="$(echo $(expr "$SYSTEM_SIZE" + 100))"
@@ -52,14 +56,29 @@ fsck.ext4 -f $SYSTEM
 resize2fs $SYSTEM "$SYSTEM_SIZE_SUM"M
 
 echo "Mounting system.img"
+echo " "
 
 mount -o rw,loop $SYSTEM $WORKDIR/system
 
 if test -d $WORKDIR/system/system/etc/init/magisk; then
-    echo "Magisk is already installed. Reinstalling..."
+    echo "Magisk is already installed."
+    echo "By continuing Magisk will reinstall itself, removing all the modules!"
+    read -p "Do you wish to continue? (y/n) " answer
+    case "$answer" in
+        [yY][eE][sS]|[yY]) 
+            echo "Reinstalling Magisk!"
+            ;;
+        *)
+            umount $WORKDIR/system
+            exit 1
+            ;;
+    esac
+
     rm $WORKDIR/system/sbin -rf
     rm $WORKDIR/system/system/etc/init/magisk -rf
+
     sed -i '/on post-fs-data/,$d' $WORKDIR/system/system/etc/init/bootanim.rc
+    RESET="1"
 fi
 
 ARCH=$(cat $WORKDIR/system/system/build.prop | grep ro.product.cpu.abi= | cut -d "=" -f2)
@@ -80,10 +99,12 @@ if [ "$ARCH" = "x86_64" ]; then
 fi
 
 echo "Patching Waydroid"
+echo " "
 
 echo "ARCHITECTURE: $ARCH"
 echo "INSTRUCTIONS: $BITS"
 echo "SELINUX: $HAS_SELINUX"
+echo "REINSTALLING: $RESET"
 
 LIBDIR="$WORKDIR/magisk/lib/$ARCH"
 
@@ -102,6 +123,10 @@ cp $LIBDIR/libbusybox.so $WORKDIR/system/system/etc/init/magisk/busybox
 cp $LIBDIR/libmagiskboot.so $WORKDIR/system/system/etc/init/magisk/magiskboot
 cp $LIBDIR/libmagiskinit.so $WORKDIR/system/system/etc/init/magisk/magiskinit
 cp $LIBDIR/libmagiskpolicy.so $WORKDIR/system/system/etc/init/magisk/magiskpolicy
+
+if [ $RESET == "1" ]; then
+    touch $WORKDIR/system/system/etc/init/magisk/.waydroid_reset
+fi
 
 X=$(cat /dev/urandom | tr -dc '[:alpha:]' | fold -w ${1:-20} | head -n 1)
 Y=$(cat /dev/urandom | tr -dc '[:alpha:]' | fold -w ${1:-20} | head -n 1)
@@ -145,6 +170,9 @@ service $Y /sbin/magisk --service
     oneshot
 
 on property:sys.boot_completed=1
+    if test -e system/etc/init/magisk/.waydroid_reset; then
+        rm -rf /data/adb/
+    fi
     mkdir /data/adb/magisk 755
     exec - root root -- /sbin/magisk --boot-complete
 
