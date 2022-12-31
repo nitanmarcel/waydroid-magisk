@@ -15,6 +15,7 @@ Install Magisk Delta in waydroid.
   - [I've enabled Zygisk in Magisk Delta Stable, updated waydroid images!!](#ive-enabled-zygisk-in-magisk-delta-stable-updated-waydroid-images)
   - [How is this different from other scripts?](#how-is-this-different-from-other-scripts)
   - [What is Magisk Delta?](#what-is-magisk-delta)
+  - [Arch Linux](#arch-linux)
 
 # Installing Magisk on Waydroid
 
@@ -62,3 +63,7 @@ Delete `/data/adb/magisk.db` inside `waydroid shell`. Will clear Magisk's databa
 
 ## What is Magisk Delta?
 Magisk Delta is a fork of the official Magisk Manager with the old Magisk Hide feature re-added and other new features. You can find a list of differences between Magisk Delta and official Magisk [here](https://github.com/HuskyDG/magisk-files/blob/main/note_stable.md#diffs-to-official-magisk).
+
+## Arch Linux
+Arch based Linux distributions are not fully supported yet.
+ * Magisk installs fine, but modules are broken
