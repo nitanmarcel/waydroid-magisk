@@ -14,7 +14,7 @@ if waydroid status | grep -q "RUNNING"; then
     exit 1
 fi
 
-MAGISK="https://huskydg.github.io/download/magisk/25.2-delta-5.apk"
+MAGISK="https://huskydg.github.io/magisk-files/app-release.apk"
 WORKDIR="$(mktemp -d)"
 RESET="0"
 
@@ -158,6 +158,7 @@ cat <<EOT >> $WORKDIR/system/system/etc/init/bootanim.rc
 on post-fs-data
     start logd
     exec - root root -- /system/etc/init/magisk/mount-sbin.sh
+    exec - root root -- /system/etc/init/magisk/magisk$BITS --setup-sbin /system/etc/init/magisk
     copy /system/etc/init/magisk/magisk$BITS /sbin/magisk$BITS
     chmod 0755 /sbin/magisk$BITS
     symlink /sbin/magisk$BITS /sbin/magisk

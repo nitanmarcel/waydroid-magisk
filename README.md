@@ -12,7 +12,7 @@ Install Magisk Delta in waydroid.
   - [Updating](#updating)
   - [Does this survive Waydroid updates?](#does-this-survive-waydroid-updates)
   - [Does Zygisk work?](#does-zygisk-work)
-  - [I've enabled Zygisk in Magisk Delta Stable/Canary, updated waydroid images!!](#ive-enabled-zygisk-in-magisk-delta-stablecanary-updated-waydroid-images)
+  - [I've enabled Zygisk in Magisk Delta Stable, updated waydroid images!!](#ive-enabled-zygisk-in-magisk-delta-stable-updated-waydroid-images)
   - [How is this different from other scripts?](#how-is-this-different-from-other-scripts)
   - [What is Magisk Delta?](#what-is-magisk-delta)
 
@@ -29,7 +29,7 @@ Install Magisk Delta in waydroid.
 3. Make the script executable with `chmod +x ./install.sh`.
 4. Run the script with `sudo ./install.sh`.
 5. Restart Waydroid using either systemd or init (depending on your system).
-6. Install [Magisk Delta](https://huskydg.github.io/magisk-files/) inside Waydroid.
+6. Install [Magisk Delta Canary](https://huskydg.github.io/magisk-files/) inside Waydroid. The Stable channel is not fully compatible with waydroid yet.
 7. Complete the first-time setup in Magisk Delta. The app will try to reboot Waydroid, but it will fail. Restart Waydroid using either systemd or init (depending on your system).
 8. **To avoid any issues it's important to read [FAQ](#faq) before using Magisk Delta on waydroid.**
 
@@ -51,11 +51,9 @@ Use Magisk Delta to install Magisk directly into the system partition. Always up
 If the Android system is updated, Magisk will be removed and you'll need to run `install.sh` again to reinstall it.
 
 ## Does Zygisk work?
-Zygisk only works on devices with SELinux enabled or by using Magisk Debug (Not recommended). Attempting to enable it without SELinux enabled or with any other version will crash Waydroid (a fix is in the works).
+Zygisk only works with Magisk Delta Canary which gets installed by default with `install.sh`. Enabling it with Magisk Delta Stable will result in waydroid not booting.Debug and updating waydroid as it will require running `install.sh` which reverts to stable magisk and will stop waydroid from booting. -->
 
-Careful when installing Magisk Debug and updating waydroid as it will require running `install.sh` which reverts to stable magisk and will stop waydroid from booting.
-
-## I've enabled Zygisk in Magisk Delta Stable/Canary, updated waydroid images!!
+## I've enabled Zygisk in Magisk Delta Stable, updated waydroid images!!
 Delete `/data/adb/magisk.db` inside `waydroid shell`. Will clear Magisk's database and disable zygdisk.
 
 ## How is this different from other scripts?
