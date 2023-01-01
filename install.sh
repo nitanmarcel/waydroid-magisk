@@ -163,12 +163,7 @@ LIBDIR="$WORKDIR/magisk/lib/$ARCH"
 mkdir $WORKDIR/system/system/etc/init/magisk
 mkdir $WORKDIR/system/sbin
 
-if [ -e "$LIBDIR/libmagisk64.so" ]; then
-    cp $LIBDIR/libmagisk64.so $WORKDIR/system/system/etc/init/magisk/magisk64
-fi
-if [ -e "$LIBDIR/libmagisk32.so" ]; then
-    cp $LIBDIR/libmagisk32.so $WORKDIR/system/system/etc/init/magisk/magisk32
-fi
+cp $LIBDIR/libmagisk$BITS.so $WORKDIR/system/system/etc/init/magisk/magisk$BITS
 
 cp $LIBDIR/libbusybox.so $WORKDIR/system/system/etc/init/magisk/busybox
 
@@ -187,7 +182,7 @@ cat <<EOT >> $WORKDIR/system/system/etc/init/bootanim.rc
 
 on post-fs-data
     start logd
-    exec - root root -- /system/etc/init/magisk/magisk64 --setup-sbin /system/etc/init/magisk
+    exec - root root -- /system/etc/init/magisk/magisk$BITS --setup-sbin /system/etc/init/magisk
     exec - root root -- /system/etc/init/magisk/magiskpolicy --live --magisk "allow * magisk_file lnk_file *"
     mkdir /sbin/.magisk 700
     mkdir /sbin/.magisk/mirror 700
