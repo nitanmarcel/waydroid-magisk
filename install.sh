@@ -48,7 +48,7 @@ mkdir "$WORKDIR/system" || true
 
 if [ -e "$(pwd)/magisk-delta.apk" ]; then
     echo "Unpacking Magisk Delta"
-    unzip -qq "($pwd)/magisk-delta.apk" -d $WORKDIR/magisk/
+    unzip -qq "$(pwd)/magisk-delta.apk" -d $WORKDIR/magisk/
 else
     echo "Downloading and unpacking Magisk Delta"
     curl $MAGISK -s --output "$WORKDIR/magisk/magisk-delta.apk"
