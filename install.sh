@@ -4,6 +4,15 @@ set -e
 
 user=$(whoami)
 
+REQUIREMENTS=(waydroid curl zip gzip)
+
+for package in "${REQUIREMENTS[@]}"; do
+    if ! which "$package" >/dev/null 2>&1; then
+        echo "Error: $package is not installed."
+        exit 1
+    fi
+done
+
 if [ "$user" != "root" ]; then
     echo "This script needs to be ran as a priviliged user!"
     exit 1
@@ -104,7 +113,7 @@ if test -d $WORKDIR/system/system/etc/init/magisk; then
     rm $WORKDIR/system/sbin -rf
     rm $WORKDIR/system/system/etc/init/magisk -rf
 
-    sed -i '/on post-fs-data/,$d' $WORKDIR/system/system/etc/init/bootanim.rc
+    sed -i '/on late-fs/,$d' $WORKDIR/system/system/etc/init/bootanim.rc
     RESET="1"
 fi
 
@@ -152,6 +161,27 @@ cp $LIBDIR/libmagiskpolicy.so $WORKDIR/system/system/etc/init/magisk/magiskpolic
 
 X=$(cat /dev/urandom | tr -dc '[:alpha:]' | fold -w ${1:-20} | head -n 1)
 Y=$(cat /dev/urandom | tr -dc '[:alpha:]' | fold -w ${1:-20} | head -n 1)
+
+cat <<EOT >> $WORKDIR/system/system/etc/init/magisk/mount-sbin.sh
+#!/bin/sh
+
+## TODO : FIX
+## https://github.com/topjohnwu/Magisk/blob/57d83635c6512f5e58753c7a1ae2d515c18cb70f/scripts/avd_magisk.sh#L22
+### Should have been handled by magisk64/32 in post-fs-data. But it has to be executable to work and it get's "restricted" from being moved around
+
+mount -t tmpfs -o 'mode=0755' tmpfs /sbin
+chcon u:object_r:rootfs:s0 /sbin
+EOT
+
+chmod 755 $WORKDIR/system/system/etc/init/magisk/mount-sbin.sh
+
+cat <<EOT >> $WORKDIR/system/system/etc/init/bootanim.rc
+
+on late-fs
+    exec - root root -- /system/etc/init/magisk/mount-sbin.sh
+EOT
+
+gzip -ck $WORKDIR/system/system/etc/init/bootanim.rc > $WORKDIR/system/system/etc/init/bootanim.rc.gz
 
 cat <<EOT >> $WORKDIR/system/system/etc/init/bootanim.rc
 
@@ -203,19 +233,6 @@ on property:init.svc.zygote=stopped
     exec - root root -- /sbin/magisk --zygote-restart
 
 EOT
-
-cat <<EOT >> $WORKDIR/system/system/etc/init/magisk/mount-sbin.sh
-#!/bin/sh
-
-## TODO : FIX
-## https://github.com/topjohnwu/Magisk/blob/57d83635c6512f5e58753c7a1ae2d515c18cb70f/scripts/avd_magisk.sh#L22
-### Should have been handled by magisk64/32 in post-fs-data. But it has to be executable to work and it get's "restricted" from being moved around
-
-mount -t tmpfs -o 'mode=0755' tmpfs /sbin
-chcon u:object_r:rootfs:s0 /sbin
-EOT
-
-chmod 755 $WORKDIR/system/system/etc/init/magisk/mount-sbin.sh
 
 umount $WORKDIR/system
 
