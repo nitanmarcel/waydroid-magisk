@@ -46,11 +46,16 @@ RESET="0"
 mkdir "$WORKDIR/magisk" || true
 mkdir "$WORKDIR/system" || true
 
-echo "Downloading and unpacking Magisk Delta"
-echo " "
+if [ -e "$(pwd)/magisk-delta.apk" ]; then
+    "Unpacking Magisk Delta"
+    unzip -qq "($pwd)/magisk-delta.apk" -d $WORKDIR/magisk/
+else
+    echo "Downloading and unpacking Magisk Delta"
+    curl $MAGISK -s --output "$WORKDIR/magisk/magisk-delta.apk"
+    unzip -qq "$WORKDIR/magisk/magisk-delta.apk" -d $WORKDIR/magisk/
+fi
 
-curl $MAGISK -s --output "$WORKDIR/magisk/magisk.apk"
-unzip -qq "$WORKDIR/magisk/magisk.apk" -d $WORKDIR/magisk/
+echo " "
 
 echo "Detecting system.img location"
 echo " "
