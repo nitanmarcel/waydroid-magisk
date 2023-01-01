@@ -128,8 +128,8 @@ if test -d $WORKDIR/system/system/etc/init/magisk; then
 
     rm $WORKDIR/system/sbin -rf
     rm $WORKDIR/system/system/etc/init/magisk -rf
-    rm $WORKDIR/system/system/etc/init/mount-sbin.sh
-    rm $WORKDIR/system/system/etc/init/bootanim.rc.gz
+    rm $WORKDIR/system/system/etc/init/mount-sbin.sh -f
+    rm $WORKDIR/system/system/etc/init/bootanim.rc.gz -f
 
     sed -i '/on late-fs/,$d' $WORKDIR/system/system/etc/init/bootanim.rc
     RESET="1"
