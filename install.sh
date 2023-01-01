@@ -177,27 +177,10 @@ cp $LIBDIR/libmagiskboot.so $WORKDIR/system/system/etc/init/magisk/magiskboot
 cp $LIBDIR/libmagiskinit.so $WORKDIR/system/system/etc/init/magisk/magiskinit
 cp $LIBDIR/libmagiskpolicy.so $WORKDIR/system/system/etc/init/magisk/magiskpolicy
 
+chmod +x $WORKDIR/system/system/etc/init/magisk/magisk*
+
 X=$(cat /dev/urandom | tr -dc '[:alpha:]' | fold -w ${1:-20} | head -n 1)
 Y=$(cat /dev/urandom | tr -dc '[:alpha:]' | fold -w ${1:-20} | head -n 1)
-
-cat <<EOT >> $WORKDIR/system/system/etc/init/mount-sbin.sh
-#!/bin/sh
-
-## TODO : FIX
-## https://github.com/topjohnwu/Magisk/blob/57d83635c6512f5e58753c7a1ae2d515c18cb70f/scripts/avd_magisk.sh#L22
-### Should have been handled by magisk64/32 in post-fs-data. But it has to be executable to work and it get's "restricted" from being moved around
-
-mount -t tmpfs -o 'mode=0755' tmpfs /sbin
-chcon u:object_r:rootfs:s0 /sbin
-EOT
-
-chmod 755 $WORKDIR/system/system/etc/init/mount-sbin.sh
-
-cat <<EOT >> $WORKDIR/system/system/etc/init/bootanim.rc
-
-on late-fs
-    exec - root root -- /system/etc/init/mount-sbin.sh
-EOT
 
 gzip -ck $WORKDIR/system/system/etc/init/bootanim.rc > $WORKDIR/system/system/etc/init/bootanim.rc.gz
 
@@ -205,19 +188,8 @@ cat <<EOT >> $WORKDIR/system/system/etc/init/bootanim.rc
 
 on post-fs-data
     start logd
-    exec - root root -- /system/etc/init/magisk/magisk$BITS --setup-sbin /system/etc/init/magisk
-    copy /system/etc/init/magisk/magisk$BITS /sbin/magisk$BITS
-    chmod 0755 /sbin/magisk$BITS
-    symlink /sbin/magisk$BITS /sbin/magisk
-    exec - root root -- /system/etc/init/magisk/magisk$BITS --install
-    chmod 0755 /sbin/magisk$BITS
-    copy /system/etc/init/magisk/magiskinit /sbin/magiskinit
-    chmod 0755 /sbin/magiskinit
-    copy /system/etc/init/magisk/magiskpolicy /sbin/magiskpolicy
-    chmod 0755 /sbin/magiskpolicy
-    exec - root root -- /sbin/magiskpolicy --live --magisk "allow * magisk_file lnk_file *"
-    exec - root root -- /sbin/magiskinit -x manager  /sbin/stub.apk
-    write /dev/.magisk_livepatch 0
+    exec - root root -- /system/etc/init/magisk/magisk64 --setup-sbin /system/etc/init/magisk
+    exec - root root -- /system/etc/init/magisk/magiskpolicy --live --magisk "allow * magisk_file lnk_file *"
     mkdir /sbin/.magisk 700
     mkdir /sbin/.magisk/mirror 700
     mkdir /sbin/.magisk/block 700
@@ -226,7 +198,6 @@ on post-fs-data
     start $X
     wait /dev/.magisk_unblock 40
     rm /dev/.magisk_unblock
-    rm /dev/.magisk_livepatch
 
 service $X /sbin/magisk --post-fs-data
     user root
@@ -242,7 +213,7 @@ service $Y /sbin/magisk --service
 on property:sys.boot_completed=1
     mkdir /data/adb/magisk 755
     exec - root root -- /sbin/magisk --boot-complete
-
+   
 on property:init.svc.zygote=restarting
     exec - root root -- /sbin/magisk --zygote-restart
    
