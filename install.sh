@@ -6,6 +6,22 @@ user=$(whoami)
 
 REQUIREMENTS=(waydroid curl zip gzip)
 
+SHASUM=$(sha256sum install.sh | cut -d ' ' -f1)
+REMOTE_SHASUM="$(curl -s https://raw.githubusercontent.com/nitanmarcel/waydroid-magisk-installer/main/sha)"
+
+if [ "$SHASUM" != "$REMOTE_SHASUM" ]; then
+    echo "install.sh was modified, or it's outdated."
+    read -p "Do you want to continue anyway? (y/n) " answer
+    case "$answer" in
+        [yY][eE][sS]|[yY]) 
+            echo " "
+            ;;
+        *)
+            exit 1
+            ;;
+    esac
+fi
+
 for package in "${REQUIREMENTS[@]}"; do
     if ! which "$package" >/dev/null 2>&1; then
         echo "Error: $package is not installed."
@@ -33,7 +49,7 @@ mkdir "$WORKDIR/system" || true
 echo "Downloading and unpacking Magisk Delta"
 echo " "
 
-wget $MAGISK -qO "$WORKDIR/magisk/magisk.apk"
+curl $MAGISK -s --output "$WORKDIR/magisk/magisk.apk"
 unzip -qq "$WORKDIR/magisk/magisk.apk" -d $WORKDIR/magisk/
 
 echo "Detecting system.img location"
