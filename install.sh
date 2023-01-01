@@ -112,6 +112,8 @@ if test -d $WORKDIR/system/system/etc/init/magisk; then
 
     rm $WORKDIR/system/sbin -rf
     rm $WORKDIR/system/system/etc/init/magisk -rf
+    rm $WORKDIR/system/system/etc/init/mount-sbin.sh
+    rm $WORKDIR/system/system/etc/init/bootanim.rc.gz
 
     sed -i '/on late-fs/,$d' $WORKDIR/system/system/etc/init/bootanim.rc
     RESET="1"
@@ -162,7 +164,7 @@ cp $LIBDIR/libmagiskpolicy.so $WORKDIR/system/system/etc/init/magisk/magiskpolic
 X=$(cat /dev/urandom | tr -dc '[:alpha:]' | fold -w ${1:-20} | head -n 1)
 Y=$(cat /dev/urandom | tr -dc '[:alpha:]' | fold -w ${1:-20} | head -n 1)
 
-cat <<EOT >> $WORKDIR/system/system/etc/init/magisk/mount-sbin.sh
+cat <<EOT >> $WORKDIR/system/system/etc/init/mount-sbin.sh
 #!/bin/sh
 
 ## TODO : FIX
@@ -173,12 +175,12 @@ mount -t tmpfs -o 'mode=0755' tmpfs /sbin
 chcon u:object_r:rootfs:s0 /sbin
 EOT
 
-chmod 755 $WORKDIR/system/system/etc/init/magisk/mount-sbin.sh
+chmod 755 $WORKDIR/system/system/etc/init/mount-sbin.sh
 
 cat <<EOT >> $WORKDIR/system/system/etc/init/bootanim.rc
 
 on late-fs
-    exec - root root -- /system/etc/init/magisk/mount-sbin.sh
+    exec - root root -- /system/etc/init/mount-sbin.sh
 EOT
 
 gzip -ck $WORKDIR/system/system/etc/init/bootanim.rc > $WORKDIR/system/system/etc/init/bootanim.rc.gz
@@ -187,7 +189,6 @@ cat <<EOT >> $WORKDIR/system/system/etc/init/bootanim.rc
 
 on post-fs-data
     start logd
-    exec - root root -- /system/etc/init/magisk/mount-sbin.sh
     exec - root root -- /system/etc/init/magisk/magisk$BITS --setup-sbin /system/etc/init/magisk
     copy /system/etc/init/magisk/magisk$BITS /sbin/magisk$BITS
     chmod 0755 /sbin/magisk$BITS
