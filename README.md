@@ -23,6 +23,7 @@ Install Magisk Delta in waydroid.
 * Waydroid 
 * curl 
 * zip
+* gzip
 
 ## Installation Steps
 1. Stop Waydroid using either systemd or init (depending on your system).
