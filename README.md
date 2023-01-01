@@ -1,11 +1,12 @@
 # Waydroid Magisk Installer
-Install Magisk Delta in waydroid.
+Install Magisk Delta in waydroid. 
 
 - [Waydroid Magisk Installer](#waydroid-magisk-installer)
 - [Installing Magisk on Waydroid](#installing-magisk-on-waydroid)
   - [Requirements](#requirements)
   - [Installation Steps](#installation-steps)
 - [FAQ](#faq)
+  - [What does work?](#what-does-work)
   - [Waydroid won't start](#waydroid-wont-start)
   - [No internet connection](#no-internet-connection)
   - [Magisk modules not working or not showing as installed](#magisk-modules-not-working-or-not-showing-as-installed)
@@ -36,6 +37,13 @@ Install Magisk Delta in waydroid.
 9. **To avoid any issues it's important to read [FAQ](#faq) before using Magisk Delta on waydroid.**
 
 # FAQ
+
+## What does work?
+* root
+* zygisk
+* modules
+* updates
+* ~~ota updates survival~~ (requires [#580](https://github.com/waydroid/waydroid/pull/580)/Not implemented. )
 
 ## Waydroid won't start
 Note that Waydroid may take longer to boot due to Magisk being set up.
