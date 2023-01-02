@@ -131,15 +131,6 @@ if [ "$SELINUX" == "0" ]; then
     esac
 fi
 
-if [ "$HAS_OVERLAY" == "1" ]; then
-    ETC_DIR="$OVERLAY_DIR/system/etc/init/"
-    SBIN_DIR="$OVERLAY_DIR/sbin"
-    MAGISK_ETC="$ETC_DIR/magisk"
-
-    cp $WORKDIR/system/system/etc/init/bootanim.rc $ETC_DIR/bootanim.rc
-    umount $WORKDIR/system
-fi
-
 if test -d $MAGISK_ETC; then
     echo "Magisk is already installed."
     echo "By continuing Magisk will reinstall itself!"
@@ -161,6 +152,18 @@ if test -d $MAGISK_ETC; then
 
     sed -i '/on post-fs-data/,$d' $ETC_DIR/bootanim.rc
     RESET="1"
+fi
+
+if [ "$HAS_OVERLAY" == "1" ]; then
+    ETC_DIR="$OVERLAY_DIR/system/etc/init/"
+    SBIN_DIR="$OVERLAY_DIR/sbin"
+    MAGISK_ETC="$ETC_DIR/magisk"
+    mkdir -p $ETC_DIR
+    mkdir -p $SBIN_DIR
+    mkdir -p $MAGISK_ETC
+
+    cp $WORKDIR/system/system/etc/init/bootanim.rc $ETC_DIR/bootanim.rc
+    umount $WORKDIR/system
 fi
 
 
@@ -189,9 +192,6 @@ echo "KERNEL: $(uname -r)"
 echo "REINSTALLING: $RESET"
 
 LIBDIR="$WORKDIR/magisk/lib/$ARCH"
-
-mkdir $MAGISK_ETC -p
-mkdir $SBIN_DIR -p
 
 cp $LIBDIR/libmagisk$BITS.so $MAGISK_ETC/magisk$BITS
 
