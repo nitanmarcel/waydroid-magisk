@@ -1,0 +1,9 @@
+[Unit]
+Description=Waydroid Magisk Daemon
+
+[Service]
+Environment=WMAGISKD_SERVICE=1
+ExecStart=/usr/local/bin/waydroid_magisk_daemon
+
+[Install]
+WantedBy=multi-user.target

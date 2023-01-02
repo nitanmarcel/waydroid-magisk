@@ -22,13 +22,6 @@ if [ "$SHASUM" != "$REMOTE_SHASUM" ]; then
     esac
 fi
 
-for package in "${REQUIREMENTS[@]}"; do
-    if ! which "$package" >/dev/null 2>&1; then
-        echo "Error: $package is not installed."
-        exit 1
-    fi
-done
-
 if [ "$user" != "root" ]; then
     echo "This script needs to be ran as a priviliged user!"
     exit 1
@@ -42,6 +35,11 @@ fi
 WAYDROID_VERSION="$(waydroid --version)"
 OVERLAY_VERSION="1.4.0"
 HAS_OVERLAY="0"
+HAS_SYSTEMD="0"
+
+if [ "$(ps -o comm= -p 1)" == "systemd" ]; then
+    HAS_SYSTEMD="1"
+fi
 
 if [ "$(printf '%s\n' "$OVERLAY_VERSION" "$WAYDROID_VERSION" | sort -V | head -n1)" = "$OVERLAY_VERSION" ]; then 
     HAS_OVERLAY="1"
@@ -178,6 +176,20 @@ if [ -e "$MAGISK_ETC" ]; then
 
     umount $WORKDIR/system
 
+    if [ "$HAS_SYSTEMD" == "1" ]; then
+        if [ -e "/usr/lib/systemd/system/waydroid_magisk_daemon.service" ]; then
+            systemctl disable waydroid_magisk_daemon.service
+            systemctl stop waydroid_magisk_daemon.service
+            rm "/usr/lib/systemd/system/waydroid_magisk_daemon.service"
+            systemctl daemon-reload
+        fi
+    else
+        if [ -e "/etc/init/waydroid_magisk_daemon.conf" ]; then
+            stop waydroid_magisk_daemon
+            rm "/etc/init/waydroid_magisk_daemon.conf"
+        fi
+    fi
+
     echo "Done!!"
     exit 1
 fi
@@ -214,6 +226,7 @@ echo "INSTRUCTIONS: $BITS"
 echo "SELINUX: $SELINUX"
 echo "OVERLAY: $HAS_OVERLAY"
 echo "KERNEL: $(uname -r)"
+echo "SYSTEMD: $HAS_SYSTEMD"
 echo "REINSTALLING: $RESET"
 
 LIBDIR="$WORKDIR/magisk/lib/$ARCH"
@@ -274,6 +287,21 @@ EOT
 
 if [ "$HAS_OVERLAY" == "0" ]; then
     umount $WORKDIR/system
+fi
+
+if [ "$HAS_OVERLAY" == "1" ]; then
+    echo "Setting up Waydroid Magisk Daemon"
+    curl -s "https://raw.githubusercontent.com/nitanmarcel/waydroid-magisk-installer/main/waydroid_magisk_daemon.py" --output "/usr/local/bin/waydroid_magisk_daemon"
+    chmod +x /usr/local/bin/waydroid_magisk_daemon
+    if [ "$HAS_SYSTEMD" == "1" ]; then
+        curl -s "https://raw.githubusercontent.com/nitanmarcel/waydroid-magisk-installer/main/waydroid_magisk_daemon.service" --output "/usr/lib/systemd/system/waydroid_magisk_daemon.service"
+        systemctl daemon-reload
+        systemctl start waydroid_magisk_daemon.service
+        systemctl enable waydroid_magisk_daemon.service
+    else
+        curl -s "https://raw.githubusercontent.com/nitanmarcel/waydroid-magisk-installer/main/waydroid_magisk_daemon.conf" --output "/etc/init/waydroid_magisk_daemon.conf"
+        start waydroid_magisk_daemon
+    fi
 fi
 
 echo "DONE!"

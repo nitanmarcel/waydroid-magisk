@@ -26,15 +26,16 @@ Install Magisk Delta in waydroid.
 * gzip
 
 ## Installation Steps
-1. Stop Waydroid using either systemd or init (depending on your system).
+1. Stop Waydroid.
+  * `sudo waydroid container stop`
+  * `waydroid session stop`
 2. Download `install.sh`.
 3. Make the script executable with `chmod +x ./install.sh`.
 4. Run the script with `sudo ./install.sh`.
 5. Restart Waydroid using either systemd or init (depending on your system).
 6. Install [Magisk Delta Canary](https://huskydg.github.io/magisk-files/) inside Waydroid. The Stable channel is not fully compatible with waydroid yet.
 7. Complete the first-time setup in Magisk Delta. The app will try to reboot Waydroid, but it will fail. Restart Waydroid using either systemd or init (depending on your system).
-8. After the first setup is complete, open magisk again, and re-install Magisk from Magisk Delta Manager.
-9. **To avoid any issues it's important to read [FAQ](#faq) before using Magisk Delta on waydroid.**
+8. **To avoid any issues it's important to read [FAQ](#faq) before using Magisk Delta on waydroid.**
 
 # FAQ
 
