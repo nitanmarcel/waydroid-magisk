@@ -53,6 +53,7 @@ ETC_DIR="$WORKDIR/system/system/etc/init/"
 MAGISK_ETC="$ETC_DIR/magisk"
 SBIN_DIR="$WORKDIR/system/sbin"
 OVERLAY_DIR="/var/lib/waydroid/overlay"
+OVERLAY_RW_DIR="/var/lib/waydroid/overlay_rw/system"
 RESET="0"
 
 mkdir "$WORKDIR/magisk" || true
@@ -137,13 +138,12 @@ if [ "$HAS_OVERLAY" == "1" ]; then
     MAGISK_ETC="$ETC_DIR/magisk"
 fi
 
-if test -d $MAGISK_ETC; then
+if [ -e "$MAGISK_ETC" ]; then
     echo "Magisk is already installed."
-    echo "By continuing Magisk will reinstall itself!"
-    read -p "Do you wish to continue? (y/n) " answer
+    read -p "Do you wish to uninstall? (y/n) " answer
     case "$answer" in
         [yY][eE][sS]|[yY]) 
-            echo "Reinstalling Magisk!"
+            echo "Uninstalling Magisk!"
             echo " "
             ;;
         *)
@@ -154,10 +154,32 @@ if test -d $MAGISK_ETC; then
 
     rm $SBIN_DIR -rf
     rm $MAGISK_ETC -rf
+    rm $ETC_DIR/bootanim.rc -f
     rm $ETC_DIR/bootanim.rc.gz -f
 
-    sed -i '/on post-fs-data/,$d' $ETC_DIR/bootanim.rc
-    RESET="1"
+    if [ -e "$ETC_DIR/bootanim.rc" ]; then
+        sed -i '/on post-fs-data/,$d' $ETC_DIR/bootanim.rc
+    fi
+
+    ETC_DIR="$OVERLAY_RW_DIR/system/etc/init/"
+    SBIN_DIR="$OVERLAY_RW_DIR/sbin"
+    MAGISK_ETC="$ETC_DIR/magisk"
+
+    if [ -e "$MAGISK_ETC" ]; then
+        rm $SBIN_DIR -rf
+        rm $MAGISK_ETC -rf
+        rm $ETC_DIR/bootanim.rc -f
+        rm $ETC_DIR/bootanim.rc.gz -f
+
+        if [ -e "$ETC_DIR/bootanim.rc" ]; then
+            sed -i '/on post-fs-data/,$d' $ETC_DIR/bootanim.rc
+        fi
+    fi
+
+    umount $WORKDIR/system
+
+    echo "Done!!"
+    exit 1
 fi
 
 if [ "$HAS_OVERLAY" == "1" ]; then
