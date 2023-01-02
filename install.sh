@@ -131,6 +131,12 @@ if [ "$SELINUX" == "0" ]; then
     esac
 fi
 
+if [ "$HAS_OVERLAY" == "1" ]; then
+    ETC_DIR="$OVERLAY_DIR/system/etc/init/"
+    SBIN_DIR="$OVERLAY_DIR/sbin"
+    MAGISK_ETC="$ETC_DIR/magisk"
+fi
+
 if test -d $MAGISK_ETC; then
     echo "Magisk is already installed."
     echo "By continuing Magisk will reinstall itself!"
@@ -155,9 +161,6 @@ if test -d $MAGISK_ETC; then
 fi
 
 if [ "$HAS_OVERLAY" == "1" ]; then
-    ETC_DIR="$OVERLAY_DIR/system/etc/init/"
-    SBIN_DIR="$OVERLAY_DIR/sbin"
-    MAGISK_ETC="$ETC_DIR/magisk"
     mkdir -p $ETC_DIR
     mkdir -p $SBIN_DIR
     mkdir -p $MAGISK_ETC
