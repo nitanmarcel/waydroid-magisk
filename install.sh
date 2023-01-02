@@ -39,8 +39,20 @@ if waydroid status | grep -q "RUNNING"; then
     exit 1
 fi
 
+WAYDROID_VERSION="$(waydroid --version)"
+OVERLAY_VERSION="1.4.0"
+HAS_OVERLAY="0"
+
+if [ "$(printf '%s\n' "$OVERLAY_VERSION" "$WAYDROID_VERSION" | sort -V | head -n1)" = "$OVERLAY_VERSION" ]; then 
+    HAS_OVERLAY="1"
+fi
+
 MAGISK="https://huskydg.github.io/magisk-files/app-release.apk"
 WORKDIR="$(mktemp -d)"
+ETC_DIR="$WORKDIR/system/system/etc/init/"
+MAGISK_ETC="$ETC_DIR/magisk"
+SBIN_DIR="$WORKDIR/system/sbin"
+OVERLAY_DIR="/var/lib/waydroid/overlay"
 RESET="0"
 
 mkdir "$WORKDIR/magisk" || true
@@ -75,15 +87,17 @@ if [ "$SYSTEM" = "none" ]; then
     exit 1
 fi
 
-echo "system.img detected at $SYSTEM"
-echo "Resizing system.img (current size + 100mb)"
-echo " "
 
-SYSTEM_SIZE="$(du -m $SYSTEM | cut -f 1)"
-SYSTEM_SIZE_SUM="$(echo $(expr "$SYSTEM_SIZE" + 100))"
+if [ "$HAS_OVERLAY" == "0" ]; then
+    echo "system.img detected at $SYSTEM"
+    echo "Resizing system.img (current size + 100mb)"
+    echo " "
+    SYSTEM_SIZE="$(du -m $SYSTEM | cut -f 1)"
+    SYSTEM_SIZE_SUM="$(echo $(expr "$SYSTEM_SIZE" + 100))"
 
-fsck.ext4 -f $SYSTEM
-resize2fs $SYSTEM "$SYSTEM_SIZE_SUM"M
+    fsck.ext4 -f $SYSTEM
+    resize2fs $SYSTEM "$SYSTEM_SIZE_SUM"M
+fi
 
 echo "Mounting system.img"
 echo " "
@@ -102,6 +116,7 @@ if ! printf '%s\0' "${SUPPORTED_SDKS[@]}" | grep -Fxqz -- "$SDK"; then
     exit 1
 fi
 
+
 if [ "$SELINUX" == "0" ]; then
     echo "Magisk is not fully supported on kernels with SELinux disabled."
     read -p "Do you wish to continue anyway? (y/n) " answer
@@ -116,7 +131,16 @@ if [ "$SELINUX" == "0" ]; then
     esac
 fi
 
-if test -d $WORKDIR/system/system/etc/init/magisk; then
+if [ "$HAS_OVERLAY" == "1" ]; then
+    ETC_DIR="$OVERLAY_DIR/system/etc/init/"
+    SBIN_DIR="$OVERLAY_DIR/sbin"
+    MAGISK_ETC="$ETC_DIR/magisk"
+
+    cp $WORKDIR/system/system/etc/init/bootanim.rc $ETC_DIR/bootanim.rc
+    umount $WORKDIR/system
+fi
+
+if test -d $MAGISK_ETC; then
     echo "Magisk is already installed."
     echo "By continuing Magisk will reinstall itself!"
     read -p "Do you wish to continue? (y/n) " answer
@@ -131,11 +155,11 @@ if test -d $WORKDIR/system/system/etc/init/magisk; then
             ;;
     esac
 
-    rm $WORKDIR/system/sbin -rf
-    rm $WORKDIR/system/system/etc/init/magisk -rf
-    rm $WORKDIR/system/system/etc/init/bootanim.rc.gz -f
+    rm $SBIN_DIR -rf
+    rm $MAGISK_ETC -rf
+    rm $ETC_DIR/bootanim.rc.gz -f
 
-    sed -i '/on post-fs-data/,$d' $WORKDIR/system/system/etc/init/bootanim.rc
+    sed -i '/on post-fs-data/,$d' $ETC_DIR/bootanim.rc
     RESET="1"
 fi
 
@@ -160,30 +184,31 @@ echo "SDK: $SDK"
 echo "ARCHITECTURE: $ARCH"
 echo "INSTRUCTIONS: $BITS"
 echo "SELINUX: $SELINUX"
+echo "OVERLAY: $HAS_OVERLAY"
 echo "KERNEL: $(uname -r)"
 echo "REINSTALLING: $RESET"
 
 LIBDIR="$WORKDIR/magisk/lib/$ARCH"
 
-mkdir $WORKDIR/system/system/etc/init/magisk
-mkdir $WORKDIR/system/sbin
+mkdir $MAGISK_ETC -p
+mkdir $SBIN_DIR -p
 
-cp $LIBDIR/libmagisk$BITS.so $WORKDIR/system/system/etc/init/magisk/magisk$BITS
+cp $LIBDIR/libmagisk$BITS.so $MAGISK_ETC/magisk$BITS
 
-cp $LIBDIR/libbusybox.so $WORKDIR/system/system/etc/init/magisk/busybox
+cp $LIBDIR/libbusybox.so $MAGISK_ETC/busybox
 
-cp $LIBDIR/libmagiskboot.so $WORKDIR/system/system/etc/init/magisk/magiskboot
-cp $LIBDIR/libmagiskinit.so $WORKDIR/system/system/etc/init/magisk/magiskinit
-cp $LIBDIR/libmagiskpolicy.so $WORKDIR/system/system/etc/init/magisk/magiskpolicy
+cp $LIBDIR/libmagiskboot.so $MAGISK_ETC/magiskboot
+cp $LIBDIR/libmagiskinit.so $MAGISK_ETC/magiskinit
+cp $LIBDIR/libmagiskpolicy.so $MAGISK_ETC/magiskpolicy
 
-chmod +x $WORKDIR/system/system/etc/init/magisk/magisk*
+chmod +x $MAGISK_ETC/magisk*
 
 X=$(cat /dev/urandom | tr -dc '[:alpha:]' | fold -w ${1:-20} | head -n 1)
 Y=$(cat /dev/urandom | tr -dc '[:alpha:]' | fold -w ${1:-20} | head -n 1)
 
-gzip -ck $WORKDIR/system/system/etc/init/bootanim.rc > $WORKDIR/system/system/etc/init/bootanim.rc.gz
+gzip -ck $ETC_DIR/bootanim.rc > $ETC_DIR/bootanim.rc.gz
 
-cat <<EOT >> $WORKDIR/system/system/etc/init/bootanim.rc
+cat <<EOT >> $ETC_DIR/bootanim.rc
 
 on post-fs-data
     start logd
@@ -221,7 +246,10 @@ on property:init.svc.zygote=stopped
 
 EOT
 
-umount $WORKDIR/system
+
+if [ "$HAS_OVERLAY" == "0" ]; then
+    umount $WORKDIR/system
+fi
 
 echo "DONE!"
 echo "Do not enable zygdisk as it's not currently working"
