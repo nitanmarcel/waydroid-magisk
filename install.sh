@@ -46,16 +46,22 @@ RESET="0"
 mkdir "$WORKDIR/magisk" || true
 mkdir "$WORKDIR/system" || true
 
-if [ -e "$(pwd)/magisk-delta.apk" ]; then
-    echo "Unpacking Magisk Delta"
-    unzip -qq "$(pwd)/magisk-delta.apk" -d $WORKDIR/magisk/
-else
-    echo "Downloading and unpacking Magisk Delta"
-    curl $MAGISK -s --output "$WORKDIR/magisk/magisk-delta.apk"
-    unzip -qq "$WORKDIR/magisk/magisk-delta.apk" -d $WORKDIR/magisk/
-fi
-
 echo " "
+
+if [ "$SELINUX" == "0" ]; then
+    echo "Magisk is not fully supported on kernels with SELinux disabled."
+    read -p "Do you wish to continue anyway? (y/n) " answer
+    case "$answer" in
+        [yY][eE][sS]|[yY]) 
+            echo " "
+            ;;
+        *)
+            
+            umount $WORKDIR/system
+            exit 1
+            ;;
+    esac
+fi
 
 echo "Detecting system.img location"
 echo " "
@@ -75,15 +81,26 @@ if [ "$SYSTEM" = "none" ]; then
     exit 1
 fi
 
+if test -e /sys/fs/selinux; then
+    HAS_SELINUX="1"
+fi
+
 echo "system.img detected at $SYSTEM"
-echo "Resizing system.img (current size + 100mb)"
-echo " "
 
-SYSTEM_SIZE="$(du -m $SYSTEM | cut -f 1)"
-SYSTEM_SIZE_SUM="$(echo $(expr "$SYSTEM_SIZE" + 100))"
+if [ ! -e "/var/lib/waydroid/.magisk_pending" ]; then
+    echo "Resizing system.img (current size + 100mb)"
+    echo "Run the installer again to install Magisk Delta."
+    echo " "
 
-fsck.ext4 -f $SYSTEM
-resize2fs $SYSTEM "$SYSTEM_SIZE_SUM"M
+    touch "/var/lib/waydroid/.magisk_pending"
+
+    SYSTEM_SIZE="$(du -m $SYSTEM | cut -f 1)"
+    SYSTEM_SIZE_SUM="$(echo $(expr "$SYSTEM_SIZE" + 100))"
+
+    fsck.ext4 -f $SYSTEM
+    resize2fs $SYSTEM "$SYSTEM_SIZE_SUM"M
+    exit 1
+fi
 
 echo "Mounting system.img"
 echo " "
@@ -98,22 +115,9 @@ SELINUX="0"
 
 if ! printf '%s\0' "${SUPPORTED_SDKS[@]}" | grep -Fxqz -- "$SDK"; then
     echo "SDK $SDK not supported"
+    
     umount $WORKDIR/system
     exit 1
-fi
-
-if [ "$SELINUX" == "0" ]; then
-    echo "Magisk is not fully supported on kernels with SELinux disabled."
-    read -p "Do you wish to continue anyway? (y/n) " answer
-    case "$answer" in
-        [yY][eE][sS]|[yY]) 
-            echo " "
-            ;;
-        *)
-            umount $WORKDIR/system
-            exit 1
-            ;;
-    esac
 fi
 
 if test -d $WORKDIR/system/system/etc/init/magisk; then
@@ -126,6 +130,7 @@ if test -d $WORKDIR/system/system/etc/init/magisk; then
             echo " "
             ;;
         *)
+            
             umount $WORKDIR/system
             exit 1
             ;;
@@ -139,10 +144,15 @@ if test -d $WORKDIR/system/system/etc/init/magisk; then
     RESET="1"
 fi
 
-
-if test -e /sys/fs/selinux; then
-    HAS_SELINUX="1"
+if [ -e "$(pwd)/magisk-delta.apk" ]; then
+    echo "Unpacking Magisk Delta"
+    unzip -qq "$(pwd)/magisk-delta.apk" -d $WORKDIR/magisk/
+else
+    echo "Downloading and unpacking Magisk Delta"
+    curl $MAGISK -s --output "$WORKDIR/magisk/magisk-delta.apk"
+    unzip -qq "$WORKDIR/magisk/magisk-delta.apk" -d $WORKDIR/magisk/
 fi
+
 
 if [ "$ARCH" = "arm64-v8a" ]; then
     ARCH="arm64-v8a"
@@ -221,7 +231,9 @@ on property:init.svc.zygote=stopped
 
 EOT
 
+
 umount $WORKDIR/system
+rm "/var/lib/waydroid/.magisk_pending"
 
 echo "DONE!"
 echo "Do not enable zygdisk as it's not currently working"
