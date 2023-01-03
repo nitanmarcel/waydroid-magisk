@@ -39,12 +39,26 @@ if waydroid status | grep -q "RUNNING"; then
     exit 1
 fi
 
+WORKDIR=""
+if [ $# -eq 0 ]; then
+  WORKDIR="$(mktemp -d)"
+else
+  WORKDIR="$1"
+  if [ ! -e "$WORKDIR" ]; then
+    mkdir "$WORKDIR"
+  fi
+fi
+
 MAGISK="https://huskydg.github.io/magisk-files/app-release.apk"
-WORKDIR="$(mktemp -d)"
 RESET="0"
 
-mkdir "$WORKDIR/magisk" || true
-mkdir "$WORKDIR/system" || true
+if [ ! -e "$WORKDIR/magisk" ]; then
+    mkdir "$WORKDIR/magisk" || true
+fi
+
+if [ ! -e "$WORKDIR/system" ]; then
+    mkdir "$WORKDIR/system" || true
+fi
 
 echo " "
 
