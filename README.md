@@ -9,6 +9,7 @@ Install Magisk Delta in waydroid.
   - [What does work?](#what-does-work)
   - [Waydroid won't start](#waydroid-wont-start)
   - [No internet connection](#no-internet-connection)
+  - [Magisk was installed but I have no root](#magisk-was-installed-but-i-have-no-root)
   - [Magisk modules not working or not showing as installed](#magisk-modules-not-working-or-not-showing-as-installed)
   - [Updating](#updating)
   - [Does this survive Waydroid updates?](#does-this-survive-waydroid-updates)
@@ -50,6 +51,31 @@ Note that Waydroid may take longer to boot due to Magisk being set up.
 
 ## No internet connection
 Try restarting Waydroid using either systemd or init (depending on your system).
+
+## Magisk was installed but I have no root
+Is possible, depending on your OS and setup that Magisk won't be able to properly work on your Waydroid installation.
+ * This isn't related to Magisk but to something that your OS or kernel does, or to a broken Waydroid installation.
+ * To check if you are affected, after Waydroid booted run `sudo waydroid shell` then inside Waydroid shell run `dmesg` and check for anything related to Magisk. Last known logs from a broken installation is:
+ ```
+ [10830.400377] DEBUG: pid: 49, tid: 49, name: magiskd  >>> magiskd <<<
+[10830.400493] DEBUG: uid: 0
+[10830.400606] DEBUG: signal 6 (SIGABRT), code -1 (SI_QUEUE), fault addr --------
+[10830.401020] DEBUG: Abort message: 'stack corruption detected (-fstack-protector)'
+[10830.401165] DEBUG:     rax 0000000000000000  rbx 0000000000000031  rcx 00007fdc5b2de758  rdx 0000000000000006
+[10830.401275] DEBUG:     r8  0000000000000001  r9  0000000000000001  r10 00007fffbe8d8760  r11 0000000000000246
+[10830.401379] DEBUG:     r12 0000000000000009  r13 0000000000000000  r14 00007fffbe8d8758  r15 0000000000000031
+[10830.401490] DEBUG:     rdi 0000000000000031  rsi 0000000000000031
+[10830.401597] DEBUG:     rbp 000000000000000d  rsp 00007fffbe8d8748  rip 00007fdc5b2de758
+[10830.403010] DEBUG: 
+[10830.403020] DEBUG: backtrace:
+[10830.403385] DEBUG:       #00 pc 000000000009d758  /apex/com.android.runtime/lib64/bionic/libc.so (syscall+24) (BuildId: 082396c74061b06f8ce2a645b3a60e84)
+[10830.403523] DEBUG:       #01 pc 00000000000a06c2  /apex/com.android.runtime/lib64/bionic/libc.so (abort+194) (BuildId: 082396c74061b06f8ce2a645b3a60e84)
+[10830.403656] DEBUG:       #02 pc 00000000000b5433  /apex/com.android.runtime/lib64/bionic/libc.so (__stack_chk_fail+19) (BuildId: 082396c74061b06f8ce2a645b3a60e84)
+[10830.403775] DEBUG:       #03 pc 0000000000020523  /sbin/magisk64 (BuildId: 7d7ae72288e42018ac0f0dcb0557b36f132e1fd5)
+[10830.403893] DEBUG:       #04 pc 0000000000020615  /sbin/magisk64 (BuildId: 7d7ae72288e42018ac0f0dcb0557b36f132e1fd5)
+[10830.404161] DEBUG:       #05 pc 000000000001ff5d  /sbin/magisk64 (BuildId: 7d7ae72288e42018ac0f0dcb0557b36f132e1fd5)
+[10830.404436] DEBUG:       #06 pc 000000000001db1b  /sbin/magisk64 (BuildId: 7d7ae72288e42018ac0f0dcb0557b36f132e1fd5)
+ ``` 
 
 ## Magisk modules not working or not showing as installed
 Currently, modules only work with Magisk Delta Canary. Download and install the apk in Waydroid, and update by following the instructions in the "Updating" section below.
