@@ -33,38 +33,49 @@ if waydroid status | grep -q "RUNNING"; then
 fi
 
 WAYDROID_VERSION="$(waydroid --version)"
-OVERLAY_VERSION="1.4.0"
-HAS_OVERLAY="0"
-HAS_SYSTEMD="0"
+SUPPORTED_VERSION="1.4.0"
 
-if [ "$(ps -o comm= -p 1)" == "systemd" ]; then
-    HAS_SYSTEMD="1"
+if [ ! "$(printf '%s\n' "$SUPPORTED_VERSION" "$WAYDROID_VERSION" | sort -V | head -n1)" = "$SUPPORTED_VERSION" ]; then 
+    echo "Waydroid 1.4.0 or higher required."
+    echo "Use installer for Waydroid 1.3.x: "
+    echo "https://github.com/nitanmarcel/waydroid-magisk-installer/tree/waydroid-1-3"
+    exit 1
 fi
 
-if [ "$(printf '%s\n' "$OVERLAY_VERSION" "$WAYDROID_VERSION" | sort -V | head -n1)" = "$OVERLAY_VERSION" ]; then 
-    HAS_OVERLAY="1"
+if [ "$SELINUX" == "0" ]; then
+    echo "Magisk is not fully supported on kernels with SELinux disabled."
+    read -p "Do you wish to continue anyway? (y/n) " answer
+    case "$answer" in
+        [yY][eE][sS]|[yY]) 
+            echo " "
+            ;;
+        *)
+            umount $WORKDIR/system
+            exit 1
+            ;;
+    esac
 fi
 
 MAGISK="https://huskydg.github.io/magisk-files/app-release.apk"
 WORKDIR="$(mktemp -d)"
-ETC_DIR="$WORKDIR/system/system/etc/init/"
-MAGISK_ETC="$ETC_DIR/magisk"
-SBIN_DIR="$WORKDIR/system/sbin"
 OVERLAY_DIR="/var/lib/waydroid/overlay"
+ETC_DIR="$OVERLAY_DIR/system/etc/init/"
+SBIN_DIR="$OVERLAY_DIR/sbin"
+MAGISK_ETC="$ETC_DIR/magisk"
+
 OVERLAY_RW_DIR="/var/lib/waydroid/overlay_rw/system"
-RESET="0"
+ETC_RW_DIR="$OVERLAY_DIR/system/etc/init/"
+SBIN_RW_DIR="$OVERLAY_DIR/sbin"
+MAGISK_RW_ETC="$ETC_DIR/magisk"
+
+if [ ! -e "$OVERLAY_DIR" ]; then
+    echo "Overlay directory not found!"
+    echo "Make sure you've started Waydroid at least once before running this script!"
+    exit 1
+fi
 
 mkdir "$WORKDIR/magisk" || true
 mkdir "$WORKDIR/system" || true
-
-if [ -e "$(pwd)/magisk-delta.apk" ]; then
-    echo "Unpacking Magisk Delta"
-    unzip -qq "$(pwd)/magisk-delta.apk" -d $WORKDIR/magisk/
-else
-    echo "Downloading and unpacking Magisk Delta"
-    curl $MAGISK -s --output "$WORKDIR/magisk/magisk-delta.apk"
-    unzip -qq "$WORKDIR/magisk/magisk-delta.apk" -d $WORKDIR/magisk/
-fi
 
 echo " "
 
@@ -86,16 +97,16 @@ if [ "$SYSTEM" = "none" ]; then
     exit 1
 fi
 
+echo "system.img detected at $SYSTEM"
+echo " "
 
-if [ "$HAS_OVERLAY" == "0" ]; then
-    echo "system.img detected at $SYSTEM"
-    echo "Resizing system.img (current size + 100mb)"
-    echo " "
-    SYSTEM_SIZE="$(du -m $SYSTEM | cut -f 1)"
-    SYSTEM_SIZE_SUM="$(echo $(expr "$SYSTEM_SIZE" + 100))"
-
-    fsck.ext4 -f $SYSTEM
-    resize2fs $SYSTEM "$SYSTEM_SIZE_SUM"M
+if [ -e "$(pwd)/magisk-delta.apk" ]; then
+    echo "Unpacking Magisk Delta"
+    unzip -qq "$(pwd)/magisk-delta.apk" -d $WORKDIR/magisk/
+else
+    echo "Downloading and unpacking Magisk Delta"
+    curl $MAGISK -s --output "$WORKDIR/magisk/magisk-delta.apk"
+    unzip -qq "$WORKDIR/magisk/magisk-delta.apk" -d $WORKDIR/magisk/
 fi
 
 echo "Mounting system.img"
@@ -109,32 +120,21 @@ SUPPORTED_SDKS=(30)
 BITS=32
 SELINUX="0"
 
+echo "Detected arch: $ARCH"
+echo "Detected sdk: $SDK"
+echo " "
+
 if ! printf '%s\0' "${SUPPORTED_SDKS[@]}" | grep -Fxqz -- "$SDK"; then
     echo "SDK $SDK not supported"
     umount $WORKDIR/system
     exit 1
 fi
 
-
-if [ "$SELINUX" == "0" ]; then
-    echo "Magisk is not fully supported on kernels with SELinux disabled."
-    read -p "Do you wish to continue anyway? (y/n) " answer
-    case "$answer" in
-        [yY][eE][sS]|[yY]) 
-            echo " "
-            ;;
-        *)
-            umount $WORKDIR/system
-            exit 1
-            ;;
-    esac
+HAS_SYSTEMD="0"
+if [ "$(ps -o comm= -p 1)" == "systemd" ]; then
+    HAS_SYSTEMD="1"
 fi
 
-if [ "$HAS_OVERLAY" == "1" ]; then
-    ETC_DIR="$OVERLAY_DIR/system/etc/init/"
-    SBIN_DIR="$OVERLAY_DIR/sbin"
-    MAGISK_ETC="$ETC_DIR/magisk"
-fi
 
 if [ -e "$MAGISK_ETC" ]; then
     echo "Magisk is already installed."
@@ -150,31 +150,29 @@ if [ -e "$MAGISK_ETC" ]; then
             ;;
     esac
 
-    rm $SBIN_DIR -rf
-    rm $MAGISK_ETC -rf
-    rm $ETC_DIR/bootanim.rc -f
-    rm $ETC_DIR/bootanim.rc.gz -f
+    if [ -e "$MAGISK_ETC" ]; then
+        rm -rf  $MAGISK_ETC
+    fi
+
+    if [ -e "$MAGISK_RW_ETC" ]; then
+        rm -rf  $MAGISK_RW_ETC
+    fi
 
     if [ -e "$ETC_DIR/bootanim.rc" ]; then
-        sed -i '/on post-fs-data/,$d' $ETC_DIR/bootanim.rc
+        rm $ETC_DIR/bootanim.rc
     fi
 
-    ETC_DIR="$OVERLAY_RW_DIR/system/etc/init/"
-    SBIN_DIR="$OVERLAY_RW_DIR/sbin"
-    MAGISK_ETC="$ETC_DIR/magisk"
-
-    if [ -e "$MAGISK_ETC" ]; then
-        rm $SBIN_DIR -rf
-        rm $MAGISK_ETC -rf
-        rm $ETC_DIR/bootanim.rc -f
-        rm $ETC_DIR/bootanim.rc.gz -f
-
-        if [ -e "$ETC_DIR/bootanim.rc" ]; then
-            sed -i '/on post-fs-data/,$d' $ETC_DIR/bootanim.rc
-        fi
+    if [ -e "$ETC_RW_DIR/bootanim.rc" ]; then
+        rm $ETC_DIR/bootanim.rc
     fi
 
-    umount $WORKDIR/system
+    if [ -e "$ETC_DIR/bootanim.rc.gz" ]; then
+        rm $ETC_DIR/bootanim.rc.gz
+    fi
+
+    if [ -e "$ETC_RW_DIR/bootanim.rc.gz" ]; then
+        rm $ETC_DIR/bootanim.rc.gz
+    fi
 
     if [ "$HAS_SYSTEMD" == "1" ]; then
         if [ -e "/usr/lib/systemd/system/waydroid_magisk_daemon.service" ]; then
@@ -194,14 +192,17 @@ if [ -e "$MAGISK_ETC" ]; then
     exit 1
 fi
 
-if [ "$HAS_OVERLAY" == "1" ]; then
-    mkdir -p $ETC_DIR
-    mkdir -p $SBIN_DIR
-    mkdir -p $MAGISK_ETC
 
-    cp $WORKDIR/system/system/etc/init/bootanim.rc $ETC_DIR/bootanim.rc
-    umount $WORKDIR/system
-fi
+mkdir -p $ETC_DIR
+mkdir -p $SBIN_DIR
+mkdir -p $MAGISK_ETC
+
+cp $WORKDIR/system/system/etc/init/bootanim.rc $ETC_DIR/bootanim.rc
+
+echo "Umounting system.img"
+echo " "
+
+umount $WORKDIR/system
 
 
 if test -e /sys/fs/selinux; then
@@ -224,10 +225,8 @@ echo "SDK: $SDK"
 echo "ARCHITECTURE: $ARCH"
 echo "INSTRUCTIONS: $BITS"
 echo "SELINUX: $SELINUX"
-echo "OVERLAY: $HAS_OVERLAY"
 echo "KERNEL: $(uname -r)"
 echo "SYSTEMD: $HAS_SYSTEMD"
-echo "REINSTALLING: $RESET"
 
 LIBDIR="$WORKDIR/magisk/lib/$ARCH"
 
@@ -285,23 +284,17 @@ on property:init.svc.zygote=stopped
 EOT
 
 
-if [ "$HAS_OVERLAY" == "0" ]; then
-    umount $WORKDIR/system
-fi
-
-if [ "$HAS_OVERLAY" == "1" ]; then
-    echo "Setting up Waydroid Magisk Daemon"
-    curl -s "https://raw.githubusercontent.com/nitanmarcel/waydroid-magisk-installer/main/waydroid_magisk_daemon.py" --output "/usr/local/bin/waydroid_magisk_daemon"
-    chmod +x /usr/local/bin/waydroid_magisk_daemon
-    if [ "$HAS_SYSTEMD" == "1" ]; then
-        curl -s "https://raw.githubusercontent.com/nitanmarcel/waydroid-magisk-installer/main/waydroid_magisk_daemon.service" --output "/usr/lib/systemd/system/waydroid_magisk_daemon.service"
-        systemctl daemon-reload
-        systemctl start waydroid_magisk_daemon.service
-        systemctl enable waydroid_magisk_daemon.service
-    else
-        curl -s "https://raw.githubusercontent.com/nitanmarcel/waydroid-magisk-installer/main/waydroid_magisk_daemon.conf" --output "/etc/init/waydroid_magisk_daemon.conf"
-        start waydroid_magisk_daemon
-    fi
+echo "Setting up Waydroid Magisk Daemon"
+curl -s "https://raw.githubusercontent.com/nitanmarcel/waydroid-magisk-installer/waydroid-1-4/waydroid_magisk_daemon.py" --output "/usr/local/bin/waydroid_magisk_daemon"
+chmod +x /usr/local/bin/waydroid_magisk_daemon
+if [ "$HAS_SYSTEMD" == "1" ]; then
+    curl -s "https://raw.githubusercontent.com/nitanmarcel/waydroid-magisk-installer/waydroid-1-4/waydroid_magisk_daemon.service" --output "/usr/lib/systemd/system/waydroid_magisk_daemon.service"
+    systemctl daemon-reload
+    systemctl start waydroid_magisk_daemon.service
+    systemctl enable waydroid_magisk_daemon.service
+else
+    curl -s "https://raw.githubusercontent.com/nitanmarcel/waydroid-magisk-installer/waydroid-1-4/waydroid_magisk_daemon.conf" --output "/etc/init/waydroid_magisk_daemon.conf"
+    start waydroid_magisk_daemon
 fi
 
 echo "DONE!"
