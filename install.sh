@@ -41,12 +41,13 @@ fi
 
 WORKDIR=""
 if [ $# -eq 0 ]; then
-  WORKDIR="$(mktemp -d)"
+  WORKDIR="$(mktemp -d)/.magisk_waydroid/"
 else
-  WORKDIR="$1"
-  if [ ! -e "$WORKDIR" ]; then
-    mkdir "$WORKDIR"
-  fi
+  WORKDIR="$1/.magisk_waydroid/"
+fi
+
+if [ ! -e "$WORKDIR" ]; then
+    mkdir "$WORKDIR/" -p
 fi
 
 MAGISK="https://huskydg.github.io/magisk-files/app-release.apk"
@@ -70,8 +71,8 @@ if [ "$SELINUX" == "0" ]; then
             echo " "
             ;;
         *)
-            
             umount $WORKDIR/system
+            rm -rf $WORKDIR
             exit 1
             ;;
     esac
@@ -129,8 +130,8 @@ SELINUX="0"
 
 if ! printf '%s\0' "${SUPPORTED_SDKS[@]}" | grep -Fxqz -- "$SDK"; then
     echo "SDK $SDK not supported"
-    
     umount $WORKDIR/system
+    rm -rf $WORKDIR
     exit 1
 fi
 
@@ -144,8 +145,8 @@ if test -d $WORKDIR/system/system/etc/init/magisk; then
             echo " "
             ;;
         *)
-            
             umount $WORKDIR/system
+            rm -rf $WORKDIR
             exit 1
             ;;
     esac
@@ -202,8 +203,8 @@ cp $LIBDIR/libmagiskpolicy.so $WORKDIR/system/system/etc/init/magisk/magiskpolic
 
 chmod +x $WORKDIR/system/system/etc/init/magisk/magisk*
 
-X=$(cat /dev/urandom | tr -dc '[:alpha:]' | fold -w ${1:-20} | head -n 1)
-Y=$(cat /dev/urandom | tr -dc '[:alpha:]' | fold -w ${1:-20} | head -n 1)
+X=$(< /dev/urandom tr -dc 'a-zA-Z0-9' | fold -w 20 | head -n 1)
+Y=$(< /dev/urandom tr -dc 'a-zA-Z0-9' | fold -w 20 | head -n 1)
 
 gzip -ck $WORKDIR/system/system/etc/init/bootanim.rc > $WORKDIR/system/system/etc/init/bootanim.rc.gz
 
@@ -247,6 +248,7 @@ EOT
 
 
 umount $WORKDIR/system
+rm -rf $WORKDIR
 rm "/var/lib/waydroid/.magisk_pending"
 
 echo "DONE!"
