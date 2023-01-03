@@ -29,8 +29,13 @@ Install Magisk Delta in waydroid.
 ## Installation Steps
 1. Stop Waydroid using either systemd or init (depending on your system).
 2. Download `install.sh`.
-3. Make the script executable with `chmod +x ./install.sh`.
-4. Run the script with `sudo ./install.sh`.
+3. Make the script executable with `chmod +x ./install.sh`.*
+  * Ubuntu Touch requires manually resize of waydroid system.img.
+    * `sudo fsck.ext4 -f /var/lib/waydroid/images/system.img`
+    * `sudo resize2fs /var/lib/waydroid/images/system.img 2G`
+4. Run the script with `sudo ./install.sh`.*
+  * Ubuntu Touch requires setting an working directory in `/home/phablet`
+    * `sudo install.sh /home/phablet/magisk_waydroid`
 5. Restart Waydroid using either systemd or init (depending on your system).
 6. Install [Magisk Delta Canary](https://huskydg.github.io/magisk-files/) inside Waydroid. The Stable channel is not fully compatible with waydroid yet.
 7. Complete the first-time setup in Magisk Delta. The app will try to reboot Waydroid, but it will fail. Restart Waydroid using either systemd or init (depending on your system).
@@ -44,7 +49,7 @@ Install Magisk Delta in waydroid.
 * zygisk
 * modules
 * updates
-* ~~ota updates survival~~ (requires [#580](https://github.com/waydroid/waydroid/pull/580)/Not implemented. )
+* ~~ota updates survival~~ (requires [#580](https://github.com/waydroid/waydroid/pull/580). Implemented in [waydroid-1-4](https://github.com/nitanmarcel/waydroid-magisk-installer/tree/waydroid-1-4) branch)
 
 ## Waydroid won't start
 Note that Waydroid may take longer to boot due to Magisk being set up.
@@ -53,6 +58,10 @@ Note that Waydroid may take longer to boot due to Magisk being set up.
 Try restarting Waydroid using either systemd or init (depending on your system).
 
 ## Magisk was installed but I have no root
+Something was gone wrong, or you have conflicting magisk files in the system. Re-try with a clean installation of waydroid and system.img.
+
+**or**
+
 Is possible, depending on your OS and setup that Magisk won't be able to properly work on your Waydroid installation.
  * This isn't related to Magisk but to something that your OS or kernel does, or to a broken Waydroid installation.
  * To check if you are affected, after Waydroid booted run `sudo waydroid shell` then inside Waydroid shell run `dmesg` and check for anything related to Magisk. Last known logs from a broken installation is:
