@@ -248,7 +248,7 @@ def uninstall():
     logging.info("Done")
 
 
-def daemon():
+def ota():
     # TODO: Clean this mess I wrote a few days ago when I feel like. And maybe try to find a better way to manage this.
     def copy(source):
         logging.info("Copying Magisk File: %s" % os.path.basename(source))
@@ -300,7 +300,7 @@ def main():
                         const="tmpdir", help="Install Magisk Delta in Waydroid")
     parser.add_argument("-r", "--remove", action="store_true",
                         help="Remove Magisk Delta from Waydroid")
-    parser.add_argument("-d", "--daemon", action="store_true",
+    parser.add_argument("-o", "--ota", action="store_true",
                         help="Handles OTA updates in Waydroid with Magisk Delta")
     args = parser.parse_args()
 
@@ -311,10 +311,10 @@ def main():
             install(arch, bits, args.install)
     elif args.remove:
         uninstall()
-    elif args.daemon:
+    elif args.pta:
         if not os.environ.get("WMAGISKD_SERVICE"):
             exit()
-        daemon()
+        ota()
     else:
         logging.info("Run waydroid -h for usage information.")
 

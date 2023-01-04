@@ -18,9 +18,9 @@ install:
 	install -m 755 waydroid_magisk.py $(BIN_DIR)/waydroid_magisk
 	if [ $(USE_SYSTEMD) = 1 ]; then \
 		install -d $(INSTALL_SYSD_DIR); \
-		cp waydroid_magisk_daemon.service $(INSTALL_SYSD_DIR); \
+		cp waydroid_magisk_ota.service $(INSTALL_SYSD_DIR); \
 	fi
 	if [ $(USE_UPSTART) = 1 ]; then \
 		install -d $(UPST_DIR); \
-		cp waydroid_magisk_daemon.conf $(INSTALL_UPST_DIR); \
+		cp waydroid_magisk_ota.conf $(INSTALL_UPST_DIR); \
 	fi
