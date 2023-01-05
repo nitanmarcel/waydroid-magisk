@@ -15,6 +15,7 @@ import time
 import urllib.error
 import urllib.request
 import zipfile
+import subprocess
 
 import dbus
 
@@ -291,6 +292,66 @@ def ota():
                         copy(mfile)
         time.sleep(1)
 
+def magisk_cmd(args):
+    if not is_installed():
+        raise ValueError("Magisk Delta is not installed")
+    waydroid_session = WaydroidContainerDbus().GetSession()
+    if not waydroid_session:
+        raise ValueError("Waydroid session is not started")
+    if waydroid_session["state"] == "FROZEN":
+        WaydroidContainerDbus().Unfreeze()
+    elif waydroid_session["state"] != "RUNNING":
+        raise ValueError("Waydroid status is %s" % waydroid_session["status"])
+    lxc = os.path.join(WAYDROID_DIR, "lxc")
+    command = ["lxc-attach", "-P", lxc, "-n", "waydroid", "--", "/sbin/magisk"]
+    command.extend(args)
+    subprocess.run(command, env={"PATH": os.environ['PATH'] + ":/system/bin:/vendor/bin"})
+
+def install_module(modpath):
+    check_root()
+    tmpdir = os.path.join(WAYDROID_DIR, "data", "waydroid_tmp")
+    if not os.path.exists(tmpdir):
+        os.makedirs(tmpdir)
+    shutil.copyfile(modpath, os.path.join(tmpdir, "module.zip"))
+    args = ["--install-module", os.path.join("/data", "waydroid_tmp", "module.zip")]
+    magisk_cmd(args)
+    os.remove(os.path.join(tmpdir, "module.zip"))
+    restart_session_if_needed()
+
+def list_modules():
+    if not is_installed():
+        raise ValueError("Magisk Delta is not installed")
+    waydroid_session = WaydroidContainerDbus().GetSession()
+    if not waydroid_session:
+        raise ValueError("Waydroid session is not started")
+    if waydroid_session["state"] == "FROZEN":
+        WaydroidContainerDbus().Unfreeze()
+    elif waydroid_session["state"] != "RUNNING":
+        raise ValueError("Waydroid status is %s" % waydroid_session["status"])
+    modpath = os.path.join(WAYDROID_DIR, "data", "adb", "modules")
+    if not os.path.isdir(modpath):
+        raise ValueError("No Magisk modules are currently installed")
+    print("\n".join("- %s" % mod for mod in os.listdir(modpath)))
+
+def remove_module(modname):
+    check_root()
+    if not is_installed():
+        raise ValueError("Magisk Delta is not installed")
+    waydroid_session = WaydroidContainerDbus().GetSession()
+    if not waydroid_session:
+        raise ValueError("Waydroid session is not started")
+    if waydroid_session["state"] == "FROZEN":
+        WaydroidContainerDbus().Unfreeze()
+    elif waydroid_session["state"] != "RUNNING":
+        raise ValueError("Waydroid status is %s" % waydroid_session["status"])
+    modpath = os.path.join(WAYDROID_DIR, "data", "adb", "modules")
+    if not os.path.isdir(os.path.join(modpath, modname)):
+        raise ValueError("'%s' is not an installed Magisk module" % modname)
+    logging.info("Removing '%s' Magisk module" % modname)
+    while os.path.isdir(os.path.join(modpath, modname)):
+        shutil.rmtree(os.path.join(modpath, modname))
+    logging.info("'%s' Magisk module has been removed" % modname)
+    restart_session_if_needed()
 
 def main():
     arch, bits = get_arch()
@@ -302,21 +363,30 @@ def main():
                         help="Remove Magisk Delta from Waydroid")
     parser.add_argument("-o", "--ota", action="store_true",
                         help="Handles OTA updates in Waydroid with Magisk Delta")
+    parser.add_argument("--install-module", help="Installs a Magisk module")
+    parser.add_argument("--remove-module", help="Removes a Magisk module")
+    parser.add_argument("--list-modules", action="store_true", help="Lists all installed Magisk modules")
     args = parser.parse_args()
 
     if args.install:
         if args.install == "tmpdir":
             install(arch, bits)
         else:
-            install(arch, bits, args.install)
+            install(arch, bits, args.install)   
     elif args.remove:
         uninstall()
-    elif args.pta:
+    elif args.install_module:
+        install_module(args.install_module)
+    elif args.remove_module:
+        remove_module(args.remove_module)
+    elif args.list_modules:
+        list_modules()
+    elif args.ota:
         if not os.environ.get("WMAGISKD_SERVICE"):
             exit()
         ota()
     else:
-        logging.info("Run waydroid -h for usage information.")
+        logging.info("Run waydroid_magisk -h for usage information.")
 
 
 if __name__ == "__main__":
