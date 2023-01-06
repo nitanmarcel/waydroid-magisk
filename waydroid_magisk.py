@@ -111,6 +111,17 @@ def restart_session_if_needed():
         WaydroidContainerDbus().Start(waydroid_session)
 
 
+class WaydroidFreezeUnfreeze:
+    def __init__(self, session) -> None:
+        self._session = session
+        self._frozen = session["state"] == "FROZEN"
+    def __enter__(self):
+        if self._frozen:
+            WaydroidContainerDbus().Unfreeze()
+    def __exit__(self, exc_type, exc_value, tracebac):
+        if self._frozen:
+            WaydroidContainerDbus().Freeze()
+
 def install(arch, bits, workdir=None):
     check_root()
     if is_installed():
@@ -298,14 +309,14 @@ def magisk_cmd(args):
     waydroid_session = WaydroidContainerDbus().GetSession()
     if not waydroid_session:
         raise ValueError("Waydroid session is not started")
-    if waydroid_session["state"] == "FROZEN":
-        WaydroidContainerDbus().Unfreeze()
     elif waydroid_session["state"] != "RUNNING":
         raise ValueError("Waydroid status is %s" % waydroid_session["status"])
-    lxc = os.path.join(WAYDROID_DIR, "lxc")
-    command = ["lxc-attach", "-P", lxc, "-n", "waydroid", "--", "/sbin/magisk"]
-    command.extend(args)
-    subprocess.run(command, env={"PATH": os.environ['PATH'] + ":/system/bin:/vendor/bin"})
+    with WaydroidFreezeUnfreeze(waydroid_session):
+        lxc = os.path.join(WAYDROID_DIR, "lxc")
+        command = ["lxc-attach", "-P", lxc, "-n", "waydroid", "--", "/sbin/magisk"]
+        command.extend(args)
+        subprocess.run(command, env={"PATH": os.environ['PATH'] + ":/system/bin:/vendor/bin"})
+
 
 def install_module(modpath):
     check_root()
@@ -324,14 +335,13 @@ def list_modules():
     waydroid_session = WaydroidContainerDbus().GetSession()
     if not waydroid_session:
         raise ValueError("Waydroid session is not started")
-    if waydroid_session["state"] == "FROZEN":
-        WaydroidContainerDbus().Unfreeze()
     elif waydroid_session["state"] != "RUNNING":
         raise ValueError("Waydroid status is %s" % waydroid_session["status"])
-    modpath = os.path.join(WAYDROID_DIR, "data", "adb", "modules")
-    if not os.path.isdir(modpath):
-        raise ValueError("No Magisk modules are currently installed")
-    print("\n".join("- %s" % mod for mod in os.listdir(modpath)))
+    with WaydroidFreezeUnfreeze(waydroid_session):
+        modpath = os.path.join(WAYDROID_DIR, "data", "adb", "modules")
+        if not os.path.isdir(modpath):
+            raise ValueError("No Magisk modules are currently installed")
+        print("\n".join("- %s" % mod for mod in os.listdir(modpath)))
 
 def remove_module(modname):
     check_root()
@@ -340,17 +350,16 @@ def remove_module(modname):
     waydroid_session = WaydroidContainerDbus().GetSession()
     if not waydroid_session:
         raise ValueError("Waydroid session is not started")
-    if waydroid_session["state"] == "FROZEN":
-        WaydroidContainerDbus().Unfreeze()
     elif waydroid_session["state"] != "RUNNING":
         raise ValueError("Waydroid status is %s" % waydroid_session["status"])
     modpath = os.path.join(WAYDROID_DIR, "data", "adb", "modules")
-    if not os.path.isdir(os.path.join(modpath, modname)):
-        raise ValueError("'%s' is not an installed Magisk module" % modname)
-    logging.info("Removing '%s' Magisk module" % modname)
-    while os.path.isdir(os.path.join(modpath, modname)):
-        shutil.rmtree(os.path.join(modpath, modname))
-    logging.info("'%s' Magisk module has been removed" % modname)
+    with WaydroidFreezeUnfreeze(waydroid_session):
+        if not os.path.isdir(os.path.join(modpath, modname)):
+            raise ValueError("'%s' is not an installed Magisk module" % modname)
+        logging.info("Removing '%s' Magisk module" % modname)
+        while os.path.isdir(os.path.join(modpath, modname)):
+            shutil.rmtree(os.path.join(modpath, modname))
+        logging.info("'%s' Magisk module has been removed" % modname)
     restart_session_if_needed()
 
 def main():
