@@ -22,6 +22,15 @@ if [ "$SHASUM" != "$REMOTE_SHASUM" ]; then
     esac
 fi
 
+
+if command -v selinuxenabled >/dev/null; then
+    selinuxenabled
+    if [ $? -eq 0 ]; then
+        echo "Magisk Delta is not compatible with Waydroid and SELinux."
+        exit 1
+    fi
+fi
+
 for package in "${REQUIREMENTS[@]}"; do
     if ! which "$package" >/dev/null 2>&1; then
         echo "Error: $package is not installed."
@@ -61,23 +70,6 @@ if [ ! -e "$WORKDIR/system" ]; then
     mkdir "$WORKDIR/system" || true
 fi
 
-echo " "
-
-if [ "$SELINUX" == "0" ]; then
-    echo "Magisk is not fully supported on kernels with SELinux disabled."
-    read -p "Do you wish to continue anyway? (y/n) " answer
-    case "$answer" in
-        [yY][eE][sS]|[yY]) 
-            echo " "
-            ;;
-        *)
-            umount $WORKDIR/system
-            rm -rf $WORKDIR
-            exit 1
-            ;;
-    esac
-fi
-
 echo "Detecting system.img location"
 echo " "
 
@@ -94,10 +86,6 @@ fi
 if [ "$SYSTEM" = "none" ]; then
     echo "Can't find waydroid system image"
     exit 1
-fi
-
-if test -e /sys/fs/selinux; then
-    HAS_SELINUX="1"
 fi
 
 echo "system.img detected at $SYSTEM"
@@ -126,7 +114,6 @@ ARCH=$(cat $WORKDIR/system/system/build.prop | grep ro.product.cpu.abi= | cut -d
 SDK=$(cat $WORKDIR/system/system/build.prop | grep ro.build.version.sdk= | cut -d "=" -f2)
 SUPPORTED_SDKS=(30)
 BITS=32
-SELINUX="0"
 
 if ! printf '%s\0' "${SUPPORTED_SDKS[@]}" | grep -Fxqz -- "$SDK"; then
     echo "SDK $SDK not supported"
