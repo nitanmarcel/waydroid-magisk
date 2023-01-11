@@ -23,12 +23,9 @@ if [ "$SHASUM" != "$REMOTE_SHASUM" ]; then
 fi
 
 
-if command -v selinuxenabled >/dev/null; then
-    selinuxenabled
-    if [ $? -eq 0 ]; then
-        echo "Magisk Delta is not compatible with Waydroid and SELinux."
-        exit 1
-    fi
+if [ -e /sys/fs/selinux/enforce ]; then
+    echo "Magisk Delta is not compatible with SELinux on Waydroid."
+    exit 1
 fi
 
 for package in "${REQUIREMENTS[@]}"; do
