@@ -14,7 +14,12 @@ INSTALL_UPST_DIR := $(DESTDIR)$(UPST_DIR)
 
 build:
 	@echo "Nothing to build, run 'make install' to copy the files!"
-install:
+check_selinux:
+	if [ -f /sys/fs/selinux/enforce ]; then \
+		echo "Magisk Delta is not compatible with SELinux on Waydroid."; \
+		exit 1; \
+	fi
+install: check_selinux
 	install -m 755 waydroid_magisk.py $(BIN_DIR)/waydroid_magisk
 	if [ $(USE_SYSTEMD) = 1 ]; then \
 		install -d $(INSTALL_SYSD_DIR); \
