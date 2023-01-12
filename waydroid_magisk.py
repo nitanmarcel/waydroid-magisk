@@ -320,7 +320,14 @@ def magisk_cmd(args):
 
 def install_module(modpath):
     check_root()
-    tmpdir = os.path.join(WAYDROID_DIR, "data", "waydroid_tmp")
+    if not is_installed():
+        raise ValueError("Magisk Delta is not installed")
+    waydroid_session = WaydroidContainerDbus().GetSession()
+    if not waydroid_session:
+        raise ValueError("Waydroid session is not started")
+    elif waydroid_session["state"] != "RUNNING":
+        raise ValueError("Waydroid status is %s" % waydroid_session["status"])
+    tmpdir = os.path.join(waydroid_session["waydroid_data"], "waydroid_tmp")
     if not os.path.exists(tmpdir):
         os.makedirs(tmpdir)
     shutil.copyfile(modpath, os.path.join(tmpdir, "module.zip"))
@@ -338,7 +345,7 @@ def list_modules():
     elif waydroid_session["state"] != "RUNNING":
         raise ValueError("Waydroid status is %s" % waydroid_session["status"])
     with WaydroidFreezeUnfreeze(waydroid_session):
-        modpath = os.path.join(WAYDROID_DIR, "data", "adb", "modules")
+        modpath = os.path.join(waydroid_session["waydroid_data"], "adb", "modules")
         if not os.path.isdir(modpath):
             raise ValueError("No Magisk modules are currently installed")
         print("\n".join("- %s" % mod for mod in os.listdir(modpath)))
@@ -352,7 +359,7 @@ def remove_module(modname):
         raise ValueError("Waydroid session is not started")
     elif waydroid_session["state"] != "RUNNING":
         raise ValueError("Waydroid status is %s" % waydroid_session["status"])
-    modpath = os.path.join(WAYDROID_DIR, "data", "adb", "modules")
+    modpath = os.path.join(waydroid_session["waydroid_data"], "adb", "modules")
     with WaydroidFreezeUnfreeze(waydroid_session):
         if not os.path.isdir(os.path.join(modpath, modname)):
             raise ValueError("'%s' is not an installed Magisk module" % modname)
