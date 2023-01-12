@@ -343,7 +343,7 @@ def list_modules():
     if not waydroid_session:
         raise ValueError("Waydroid session is not started")
     elif waydroid_session["state"] != "RUNNING":
-        raise ValueError("Waydroid status is %s" % waydroid_session["status"])
+        raise ValueError("Waydroid status is %s" % waydroid_session["state"])
     with WaydroidFreezeUnfreeze(waydroid_session):
         modpath = os.path.join(waydroid_session["waydroid_data"], "adb", "modules")
         if not os.path.isdir(modpath):
@@ -357,17 +357,35 @@ def remove_module(modname):
     waydroid_session = WaydroidContainerDbus().GetSession()
     if not waydroid_session:
         raise ValueError("Waydroid session is not started")
-    elif waydroid_session["state"] != "RUNNING":
-        raise ValueError("Waydroid status is %s" % waydroid_session["status"])
-    modpath = os.path.join(waydroid_session["waydroid_data"], "adb", "modules")
     with WaydroidFreezeUnfreeze(waydroid_session):
+        if waydroid_session["state"] != "RUNNING":
+            raise ValueError("Waydroid status is %s" % waydroid_session["state"])
+        modpath = os.path.join(waydroid_session["waydroid_data"], "adb", "modules")    
         if not os.path.isdir(os.path.join(modpath, modname)):
             raise ValueError("'%s' is not an installed Magisk module" % modname)
         logging.info("Removing '%s' Magisk module" % modname)
         while os.path.isdir(os.path.join(modpath, modname)):
             shutil.rmtree(os.path.join(modpath, modname))
         logging.info("'%s' Magisk module has been removed" % modname)
-    restart_session_if_needed()
+        restart_session_if_needed()
+
+def su():
+    check_root()
+    if not is_installed():
+        raise ValueError("Magisk Delta is not installed")
+    waydroid_session = WaydroidContainerDbus().GetSession()
+    if not waydroid_session:
+        raise ValueError("Waydroid session is not started")
+    with WaydroidFreezeUnfreeze(waydroid_session):
+        if waydroid_session["state"] != "RUNNING":
+            raise ValueError("Waydroid status is %s" % waydroid_session["state"])
+        lxc = os.path.join(WAYDROID_DIR, "lxc")
+        # Create /dev/tty to 
+        command = ["lxc-attach", "-P", lxc, "-n", "waydroid", "--", "su", "-c", "mknod",  "-m", "666", "/dev/tty", "c", "5", "0", "2>", "/dev/null"]
+        subprocess.run(command, env={"PATH": os.environ['PATH'] + ":/system/bin:/vendor/bin"})
+        command = ["lxc-attach", "-P", lxc, "-n", "waydroid", "--", "su"]
+        subprocess.run(command, env={"PATH": os.environ['PATH'] + ":/system/bin:/vendor/bin"})
+
 
 def main():
     arch, bits = get_arch()
@@ -382,6 +400,7 @@ def main():
     parser.add_argument("--install-module", help="Installs a Magisk module")
     parser.add_argument("--remove-module", help="Removes a Magisk module")
     parser.add_argument("--list-modules", action="store_true", help="Lists all installed Magisk modules")
+    parser.add_argument("--su", action="store_true", help="Starts Magisk SU inside waydroid.")
     args = parser.parse_args()
 
     if args.install:
@@ -397,6 +416,8 @@ def main():
         remove_module(args.remove_module)
     elif args.list_modules:
         list_modules()
+    elif args.su:
+        su()
     elif args.ota:
         if not os.environ.get("WMAGISKD_SERVICE"):
             exit()
