@@ -49,7 +49,7 @@ MAGISK_FILES = [
     "/var/lib/waydroid/overlay_rw/system/system/etc/init/magisk/magiskinit",
     "/var/lib/waydroid/overlay_rw/system/system/etc/init/magisk/magisk.apk",
     "/var/lib/waydroid/overlay_rw/system/system/etc/init/magisk/busybox",
-    # "/var/lib/waydroid/overlay_rw/system/system/etc/init/magisk/chromeos",
+    "/var/lib/waydroid/overlay_rw/system/system/etc/init/magisk/chromeos",
     "/var/lib/waydroid/overlay_rw/system/system/etc/init/magisk/config",
     "/var/lib/waydroid/overlay_rw/system/system/etc/init/magisk/magiskpolicy",
     "/var/lib/waydroid/overlay_rw/system/system/etc/init/magisk/magisk32",
@@ -163,9 +163,9 @@ def install(arch, bits, workdir=None):
             handle.write("on post-fs-data\n")
             handle.write("\tstart logd\n")
             handle.write(
-                "\texec - root root -- /system/etc/init/magisk/magisk%s --setup-sbin /system/etc/init/magisk\n" % str(bits))
+                "\texec u:r:su:s0 root root -- /system/etc/init/magisk/magisk%s --auto-selinux --setup-sbin /system/etc/init/magisk\n" % str(bits))
             handle.write(
-                "\texec - root root -- /system/etc/init/magisk/magiskpolicy --live --magisk \"allow * magisk_file lnk_file *\"\n")
+                "\texec u:r:su:s0 root root -- /system/etc/init/magisk/magiskpolicy --live --magisk \"allow * magisk_file lnk_file *\"\n")
             handle.write("\tmkdir /sbin/.magisk 700\n")
             handle.write("\tmkdir /sbin/.magisk/mirror 700\n")
             handle.write("\tmkdir /sbin/.magisk/block 700\n")
@@ -181,31 +181,31 @@ def install(arch, bits, workdir=None):
             handle.write("\trm /dev/.magisk_unblock\n")
             handle.write("\n\n")
 
-            handle.write("service %s /sbin/magisk --post-fs-data\n" % x)
+            handle.write("service %s /sbin/magisk --auto-selinux --post-fs-data\n" % x)
             handle.write("\tuser root\n")
-            handle.write("\tseclabel -\n")
+            handle.write("\tseclabel u:r:su:s0\n")
             handle.write("\toneshot\n")
             handle.write("\n\n")
 
-            handle.write("service %s /sbin/magisk --service\n" % y)
+            handle.write("service %s /sbin/magisk --auto-selinux --service\n" % y)
             handle.write("\tclass late_start\n")
             handle.write("\tuser root\n")
-            handle.write("\tseclabel -\n")
+            handle.write("\tseclabel u:r:su:s0\n")
             handle.write("\toneshot\n")
             handle.write("\n\n")
 
             handle.write("on property:sys.boot_completed=1\n")
             handle.write("\tmkdir /data/adb/magisk 755\n")
             handle.write(
-                "\texec - root root -- /sbin/magisk --boot-complete\n")
+                "\texec u:r:su:s0 root root -- /sbin/magisk --auto-selinux --boot-complete\n")
             handle.write("\n\n")
 
             handle.write("on property:init.svc.zygote=restarting\n")
-            handle.write("\texec - root root -- /sbin/magisk --zygote-restart")
+            handle.write("\texec u:r:su:s0 root root -- /sbin/magisk --auto-selinux --zygote-restart")
             handle.write("\n\n")
 
             handle.write("on property:init.svc.zygote=stopped\n")
-            handle.write("exec - root root -- /sbin/magisk --zygote-restart")
+            handle.write("\texec u:r:su:s0 root root -- /sbin/magisk --auto-selinux --zygote-restart")
             handle.write("\n")
 
             logging.info("Finishing installation")
@@ -268,6 +268,7 @@ def ota():
         if os.path.isdir(source):
             if os.path.exists(dest):
                 shutil.rmtree(dest)
+            os.makedirs(dest)
             shutil.copytree(source, dest)
         else:
             if os.path.exists(dest):
