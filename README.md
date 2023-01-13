@@ -36,7 +36,10 @@ Install Magisk Delta in waydroid.
 3. run `sudo waydroid_magisk --install` to install Magisk
   * Ubuntu Touch requires setting an working directory in `/home/phablet`
     * `sudo waydroid_magisk --install /home/phablet/magisk_waydroid`
-4. **To avoid any issues it's important to read [FAQ](#faq) before using Magisk Delta on waydroid.**
+4. enable ota survival service
+  * For systemd `sudo systemctl enable waydroid_magisk_ota.service && sudo systemctl start waydroid_magisk_ota.service`
+  * For upstart `sudo start waydroid_magisk_ota.service`
+5. **To avoid any issues it's important to read [FAQ](#faq) before using Magisk Delta on waydroid.**
 
 # FAQ
 
