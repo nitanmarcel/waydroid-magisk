@@ -21,7 +21,10 @@ Install Magisk Delta in waydroid.
 # Installing Magisk on Waydroid
 
 ## Requirements
-* waydroid (1.4>=)
+* waydroid (1.4>=) with overlay mounting support
+  * You can check if your waydroid supports overlay mount by running `grep mount_overlays /var/lib/waydroid/waydroid.cfg`
+  * If `waydroid.cfg` doesn't exist, run `waydroid init` to initialize Waydroid.
+  * If the output of the command above is `mount_overlays = False` or you're using an older Waydroid version, refer to [install_script](https://github.com/nitanmarcel/waydroid-magisk-installer/tree/install_script) branch
 * make
 * git
 
