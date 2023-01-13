@@ -1,0 +1,10 @@
+[Unit]
+Description=Waydroid Magisk OTA survival service
+
+[Service]
+Environment=WMAGISKD_SERVICE=1
+ExecStart=/usr/bin/waydroid_magisk --ota
+Restart=always
+
+[Install]
+WantedBy=multi-user.target

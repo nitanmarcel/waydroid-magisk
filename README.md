@@ -9,7 +9,6 @@ Install Magisk Delta in waydroid.
   - [What does work?](#what-does-work)
   - [Waydroid won't start](#waydroid-wont-start)
   - [No internet connection](#no-internet-connection)
-  - [Magisk was installed but I have no root](#magisk-was-installed-but-i-have-no-root)
   - [Magisk modules not working or not showing as installed](#magisk-modules-not-working-or-not-showing-as-installed)
   - [Updating](#updating)
   - [Does this survive Waydroid updates?](#does-this-survive-waydroid-updates)
@@ -22,26 +21,22 @@ Install Magisk Delta in waydroid.
 # Installing Magisk on Waydroid
 
 ## Requirements
-* Waydroid 
-* curl 
-* zip
-* gzip
+* waydroid (1.4>=) with overlay mounting support
+  * You can check if your waydroid supports overlay mount by running `grep mount_overlays /var/lib/waydroid/waydroid.cfg`
+  * If `waydroid.cfg` doesn't exist, run `waydroid init` to initialize Waydroid.
+  * If the output of the command above is `mount_overlays = False` or you're using an older Waydroid version, refer to [install_script](https://github.com/nitanmarcel/waydroid-magisk-installer/tree/install_script) branch
+* make
+* git
 
 ## Installation Steps
-1. Stop Waydroid using either systemd or init (depending on your system).
-2. Download `install.sh`.
-3. Make the script executable with `chmod +x ./install.sh`.*
-  * Ubuntu Touch requires manually resize of waydroid system.img.
-    * `sudo fsck.ext4 -f /var/lib/waydroid/images/system.img`
-    * `sudo resize2fs /var/lib/waydroid/images/system.img 2G`
-4. Run the script with `sudo ./install.sh`.*
+1. git clone `https://github.com/nitanmarcel/waydroid-magisk-installer/`
+2. run `sudo make install USE_SYSTEMD=1`
+  * If using upstart (e.g Ubuntu Touch 16.04)
+  * run `sudo make install USE_UPSTART=1`
+3. run `sudo waydroid_magisk --install` to install Magisk
   * Ubuntu Touch requires setting an working directory in `/home/phablet`
-    * `sudo install.sh /home/phablet/magisk_waydroid`
-5. Restart Waydroid using either systemd or init (depending on your system).
-6. Install [Magisk Delta Canary](https://huskydg.github.io/magisk-files/) inside Waydroid. The Stable channel is not fully compatible with waydroid yet.
-7. Complete the first-time setup in Magisk Delta. The app will try to reboot Waydroid, but it will fail. Restart Waydroid using either systemd or init (depending on your system).
-8. After the first setup is complete, open magisk again, and re-install Magisk from Magisk Delta Manager.
-9. **To avoid any issues it's important to read [FAQ](#faq) before using Magisk Delta on waydroid.**
+    * `sudo waydroid_magisk --install /home/phablet/magisk_waydroid`
+4. **To avoid any issues it's important to read [FAQ](#faq) before using Magisk Delta on waydroid.**
 
 # FAQ
 
@@ -50,16 +45,13 @@ Install Magisk Delta in waydroid.
 * zygisk
 * modules
 * updates
-* ~~ota updates survival~~ (requires [#580](https://github.com/waydroid/waydroid/pull/580). Implemented in [waydroid-1-4](https://github.com/nitanmarcel/waydroid-magisk-installer/tree/waydroid-1-4) branch)
+* ~~ota updates survival~~ (Starting with waydroid 1.4.0)
 
 ## Waydroid won't start
 Note that Waydroid may take longer to boot due to Magisk being set up.
 
 ## No internet connection
 Try restarting Waydroid using either systemd or init (depending on your system).
-
-## Magisk was installed but I have no root
-Something was gone wrong, or you have conflicting magisk files in the system. Re-try with a clean installation of waydroid and system.img.
 
 ## Magisk modules not working or not showing as installed
 Currently, modules only work with Magisk Delta Canary. Download and install the apk in Waydroid, and update by following the instructions in the "Updating" section below.
