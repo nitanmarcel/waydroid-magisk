@@ -20,7 +20,7 @@ import subprocess
 import dbus
 
 logging.basicConfig(
-    format="[%(asctime)s] %(message)s",
+    format="[%(asctime)s] - %(levelname)s - %(message)s",
     level=logging.INFO,
     datefmt="%H:%M:%S")
 
@@ -59,7 +59,8 @@ MAGISK_FILES = [
 
 def check_root():
     if not os.getuid() == 0:
-        raise ValueError("This app needs to be ran as a priviliged user!")
+        logging.error("This app needs to be ran as a priviliged user!")
+        return
 
 
 def download_obj(url, destination, filename):
@@ -69,7 +70,8 @@ def download_obj(url, destination, filename):
                 shutil.copyfileobj(response, handle)
     except urllib.error.HTTPError as exc:
         if exc.code == 404:
-            raise ValueError("Failed to download %s" % filename)
+            logging.error("Failed to download %s" % filename)
+            return
 
 
 def get_arch():
@@ -87,7 +89,7 @@ def get_arch():
         return "arm64-v8a", 64
     if plat == "i686":
         return "x86_64", 64
-    raise ValueError("%s not supported" % plat)
+    logging.error("%s not supported" % plat)
 
 
 def is_installed():
@@ -126,7 +128,7 @@ class WaydroidFreezeUnfreeze:
         if self._frozen:
             WaydroidContainerDbus().Freeze()
     @property
-    def _frozen(self):
+    def _Pfrozen(self):
         if self._session:
             return self.session["state"] == "FROZEN"
         else:
@@ -135,7 +137,8 @@ class WaydroidFreezeUnfreeze:
 def install(arch, bits, workdir=None):
     check_root()
     if is_installed():
-        raise ValueError("Magisk Delta already installed!")
+        logging.error("Magisk Delta already installed!")
+        return
     with tempfile.TemporaryDirectory(dir=workdir) as tempdir:
         logging.info("Downloading Magisk Delta")
         download_obj(MAGISK_CANARY, tempdir, "magisk-delta.apk")
@@ -228,7 +231,8 @@ def install(arch, bits, workdir=None):
 def uninstall():
     check_root()
     if not is_installed():
-        raise ValueError("Magisk Delta is not installed!")
+        logging.error("Magisk Delta is not installed!")
+        return
     logging.info("Removing Magisk Delta")
     for file in MAGISK_FILES:
         if os.path.exists(file):
@@ -316,12 +320,15 @@ def ota():
 
 def magisk_cmd(args):
     if not is_installed():
-        raise ValueError("Magisk Delta is not installed")
+        logging.error("Magisk Delta is not installed")
+        return
     waydroid_session = get_waydroid_session()
     if not waydroid_session:
-        raise ValueError("Waydroid session is not started")
+        logging.error("Waydroid session is not started")
+        return
     elif waydroid_session["state"] != "RUNNING":
-        raise ValueError("Waydroid status is %s" % waydroid_session["status"])
+        logging.error("Waydroid status is %s" % waydroid_session["status"])
+        return
     with WaydroidFreezeUnfreeze(waydroid_session):
         lxc = os.path.join(WAYDROID_DIR, "lxc")
         command = ["lxc-attach", "-P", lxc, "-n", "waydroid", "--", "/sbin/magisk"]
@@ -332,12 +339,15 @@ def magisk_cmd(args):
 def install_module(modpath):
     check_root()
     if not is_installed():
-        raise ValueError("Magisk Delta is not installed")
+        logging.error("Magisk Delta is not installed")
+        return
     waydroid_session = get_waydroid_session()
     if not waydroid_session:
-        raise ValueError("Waydroid session is not started")
+        logging.error("Waydroid session is not started")
+        return
     elif waydroid_session["state"] != "RUNNING":
-        raise ValueError("Waydroid status is %s" % waydroid_session["status"])
+        logging.error("Waydroid status is %s" % waydroid_session["status"])
+        return
     tmpdir = os.path.join(waydroid_session["waydroid_data"], "waydroid_tmp")
     if not os.path.exists(tmpdir):
         os.makedirs(tmpdir)
@@ -349,31 +359,39 @@ def install_module(modpath):
 
 def list_modules():
     if not is_installed():
-        raise ValueError("Magisk Delta is not installed")
+        logging.error("Magisk Delta is not installed")
+        return
     waydroid_session = get_waydroid_session()
     if not waydroid_session:
-        raise ValueError("Waydroid session is not started")
+        logging.error("Waydroid session is not started")
+        return
     elif waydroid_session["state"] != "RUNNING":
-        raise ValueError("Waydroid status is %s" % waydroid_session["state"])
+        logging.error("Waydroid status is %s" % waydroid_session["state"])
+        return
     with WaydroidFreezeUnfreeze(waydroid_session):
         modpath = os.path.join(waydroid_session["waydroid_data"], "adb", "modules")
         if not os.path.isdir(modpath):
-            raise ValueError("No Magisk modules are currently installed")
+            logging.error("No Magisk modules are currently installed")
+            return
         print("\n".join("- %s" % mod for mod in os.listdir(modpath)))
 
 def remove_module(modname):
     check_root()
     if not is_installed():
-        raise ValueError("Magisk Delta is not installed")
+        logging.error("Magisk Delta is not installed")
+        return
     waydroid_session = get_waydroid_session()
     if not waydroid_session:
-        raise ValueError("Waydroid session is not started")
+        logging.error("Waydroid session is not started")
+        return
     with WaydroidFreezeUnfreeze(waydroid_session):
         if waydroid_session["state"] != "RUNNING":
-            raise ValueError("Waydroid status is %s" % waydroid_session["state"])
+            logging.error("Waydroid status is %s" % waydroid_session["state"])
+            return
         modpath = os.path.join(waydroid_session["waydroid_data"], "adb", "modules")    
         if not os.path.isdir(os.path.join(modpath, modname)):
-            raise ValueError("'%s' is not an installed Magisk module" % modname)
+            logging.error("'%s' is not an installed Magisk module" % modname)
+            return
         logging.info("Removing '%s' Magisk module" % modname)
         while os.path.isdir(os.path.join(modpath, modname)):
             shutil.rmtree(os.path.join(modpath, modname))
@@ -383,15 +401,17 @@ def remove_module(modname):
 def su():
     check_root()
     if not is_installed():
-        raise ValueError("Magisk Delta is not installed")
+        logging.error("Magisk Delta is not installed")
+        return
     waydroid_session = get_waydroid_session()
     if not waydroid_session:
-        raise ValueError("Waydroid session is not started")
+        logging.error("Waydroid session is not started")
+        return
     with WaydroidFreezeUnfreeze(waydroid_session):
         if waydroid_session["state"] != "RUNNING":
-            raise ValueError("Waydroid status is %s" % waydroid_session["state"])
+            logging.error("Waydroid status is %s" % waydroid_session["state"])
+            return
         lxc = os.path.join(WAYDROID_DIR, "lxc")
-        # Create /dev/tty to 
         command = ["lxc-attach", "-P", lxc, "-n", "waydroid", "--", "su", "-c", "mknod",  "-m", "666", "/dev/tty", "c", "5", "0", "2>", "/dev/null"]
         subprocess.run(command, env={"PATH": os.environ['PATH'] + ":/system/bin:/vendor/bin"})
         command = ["lxc-attach", "-P", lxc, "-n", "waydroid", "--", "su"]
