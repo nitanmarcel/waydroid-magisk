@@ -101,9 +101,14 @@ def WaydroidContainerDbus():
 def WaydroidSessionDbus():
     return dbus.Interface(dbus.SystemBus().get_object("id.waydro.Session", "/SessionManager"), "id.waydro.SessionManager")
 
+def get_waydroid_session():
+    try:
+        return WaydroidContainerDbus().GetSession()
+    except dbus.exceptions.DBusException:
+        return None
 
 def restart_session_if_needed():
-    waydroid_session = WaydroidContainerDbus().GetSession()
+    waydroid_session = get_waydroid_session()
     if waydroid_session:
         logging.info("Stopping Waydroid")
         WaydroidContainerDbus().Stop()
@@ -114,13 +119,18 @@ def restart_session_if_needed():
 class WaydroidFreezeUnfreeze:
     def __init__(self, session) -> None:
         self._session = session
-        self._frozen = session["state"] == "FROZEN"
     def __enter__(self):
         if self._frozen:
             WaydroidContainerDbus().Unfreeze()
     def __exit__(self, exc_type, exc_value, tracebac):
         if self._frozen:
             WaydroidContainerDbus().Freeze()
+    @property
+    def _frozen(self):
+        if self._session:
+            return self.session["state"] == "FROZEN"
+        else:
+            return False
 
 def install(arch, bits, workdir=None):
     check_root()
@@ -307,7 +317,7 @@ def ota():
 def magisk_cmd(args):
     if not is_installed():
         raise ValueError("Magisk Delta is not installed")
-    waydroid_session = WaydroidContainerDbus().GetSession()
+    waydroid_session = get_waydroid_session()
     if not waydroid_session:
         raise ValueError("Waydroid session is not started")
     elif waydroid_session["state"] != "RUNNING":
@@ -323,7 +333,7 @@ def install_module(modpath):
     check_root()
     if not is_installed():
         raise ValueError("Magisk Delta is not installed")
-    waydroid_session = WaydroidContainerDbus().GetSession()
+    waydroid_session = get_waydroid_session()
     if not waydroid_session:
         raise ValueError("Waydroid session is not started")
     elif waydroid_session["state"] != "RUNNING":
@@ -340,7 +350,7 @@ def install_module(modpath):
 def list_modules():
     if not is_installed():
         raise ValueError("Magisk Delta is not installed")
-    waydroid_session = WaydroidContainerDbus().GetSession()
+    waydroid_session = get_waydroid_session()
     if not waydroid_session:
         raise ValueError("Waydroid session is not started")
     elif waydroid_session["state"] != "RUNNING":
@@ -355,7 +365,7 @@ def remove_module(modname):
     check_root()
     if not is_installed():
         raise ValueError("Magisk Delta is not installed")
-    waydroid_session = WaydroidContainerDbus().GetSession()
+    waydroid_session = get_waydroid_session()
     if not waydroid_session:
         raise ValueError("Waydroid session is not started")
     with WaydroidFreezeUnfreeze(waydroid_session):
@@ -374,7 +384,7 @@ def su():
     check_root()
     if not is_installed():
         raise ValueError("Magisk Delta is not installed")
-    waydroid_session = WaydroidContainerDbus().GetSession()
+    waydroid_session = get_waydroid_session()
     if not waydroid_session:
         raise ValueError("Waydroid session is not started")
     with WaydroidFreezeUnfreeze(waydroid_session):
