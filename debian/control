@@ -1,0 +1,18 @@
+Source: waydroid-magisk
+Maintainer: Erfan Abdi <erfangplus@gmail.com>
+Section: misc
+Priority: optional
+Build-Depends: debhelper (>= 10),
+               dh-python,
+               python3,
+Standards-Version: 4.5.0.3
+Vcs-Browser: https://github.com/nitanmarcel/waydroid-magisk
+Vcs-Git: https://github.com/nitanmarcel/waydroid-magisk.git
+
+Package: waydroid-magisk
+Architecture: all
+Depends: ${misc:Depends},
+         ${python3:Depends},
+         python3-dbus,
+         dbus
+Description: Install and manage Magisk in Waydroid

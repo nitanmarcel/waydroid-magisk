@@ -131,7 +131,7 @@ def get_waydroid_session():
         return None
 
 def is_running():
-    return os.listdir(os.path.join(WAYDROID_DIR, "rootfs")) > 0
+    return len(os.listdir(os.path.join(WAYDROID_DIR, "rootfs"))) > 0
 
 def stop_session_if_needed():
     waydroid_session = get_waydroid_session()

@@ -20,7 +20,8 @@ check_selinux:
 		exit 1; \
 	fi
 install: check_selinux
-	install -m 755 waydroid_magisk.py $(BIN_DIR)/waydroid_magisk
+	install -d $(INSTALL_BIN_DIR)
+	install -m 755 waydroid_magisk.py $(INSTALL_BIN_DIR)/waydroid_magisk
 	if [ $(USE_SYSTEMD) = 1 ]; then \
 		install -d $(INSTALL_SYSD_DIR); \
 		cp waydroid_magisk_ota.service $(INSTALL_SYSD_DIR); \
