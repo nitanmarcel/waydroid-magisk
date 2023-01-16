@@ -1,0 +1,1 @@
+deb [signed-by=/etc/apt/trusted.gpg.d/waydroid_magisk.gpg https://nitanmarcel.github.io/waydroid-magisk/ppa ./

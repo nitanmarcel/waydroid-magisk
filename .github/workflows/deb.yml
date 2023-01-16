@@ -1,0 +1,30 @@
+name: Deb Build
+
+on:
+  repository_dispatch:
+
+jobs:
+  build_ubuntu:
+    name: Build Ubuntu
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/checkout@v3
+        with:
+          repository: nitanmarcel/waydroid-magisk
+          path: waydroid-magisk
+          submodules: true
+          ref: main
+      - name: Build Ubuntu Package
+        uses: jiro4989/build-deb-action@v2
+        with:
+          package: waydroid-magisk
+          package_root: .debpkg
+          maintainer: Marcel Alexandru Nitan
+          arch: all
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v2
+        with:
+          path: |
+            .debpkg/*.deb
+        
