@@ -76,7 +76,7 @@ def check_root():
 def has_overlay():
     config = configparser.ConfigParser()
     config.read(CONFIG_FILE)
-    if "mount_overlay" in config["waydroid"].keys():
+    if "mount_overlays" in config["waydroid"].keys():
         return config["waydroid"]["mount_overlays"].lower() == "true"
     return False
 
