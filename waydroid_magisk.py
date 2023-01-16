@@ -18,7 +18,13 @@ import zipfile
 import subprocess
 import configparser
 
-import dbus
+
+WITH_DBUS = True
+
+try:
+    import dbus
+except ImportError:
+    WITH_DBUS = False
 
 logging.basicConfig(
     format="[%(asctime)s] - %(levelname)s - %(message)s",
@@ -125,10 +131,11 @@ def WaydroidSessionDbus():
     return dbus.Interface(dbus.SystemBus().get_object("id.waydro.Session", "/SessionManager"), "id.waydro.SessionManager")
 
 def get_waydroid_session():
-    try:
-        return WaydroidContainerDbus().GetSession()
-    except dbus.exceptions.DBusException:
-        return None
+    if WITH_DBUS:
+        try:
+            return WaydroidContainerDbus().GetSession()
+        except dbus.exceptions.DBusException:
+            return
 
 def is_running():
     return len(os.listdir(os.path.join(WAYDROID_DIR, "rootfs"))) > 0
@@ -158,7 +165,7 @@ class WaydroidFreezeUnfreeze:
         if self._frozen:
             WaydroidContainerDbus().Freeze()
     @property
-    def _Pfrozen(self):
+    def _frozen(self):
         if self._session:
             return self.session["state"] == "FROZEN"
         else:
