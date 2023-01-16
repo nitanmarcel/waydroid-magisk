@@ -500,7 +500,7 @@ def main():
         return
     arch, bits = get_arch()
     parser = argparse.ArgumentParser(
-        description='Magisk Delta installer for Waydroid.')
+        description='Magisk Delta installer and manager for Waydroid.')
     parser.add_argument("-i", "--install", nargs='?', type=str,
                         const="tmpdir", help="Install Magisk Delta in Waydroid")
     parser.add_argument("-r", "--remove", action="store_true",

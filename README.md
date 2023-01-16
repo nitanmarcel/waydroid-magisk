@@ -1,10 +1,11 @@
-# Waydroid Magisk Installer
-Install Magisk Delta in waydroid. 
+# Waydroid Magisk
+Install and manage Magisk Delta in waydroid. 
 
-- [Waydroid Magisk Installer](#waydroid-magisk-installer)
+- [Waydroid Magisk](#waydroid-magisk)
 - [Installing Magisk on Waydroid](#installing-magisk-on-waydroid)
   - [Requirements](#requirements)
   - [Installation Steps](#installation-steps)
+- [Usage](#usage)
 - [FAQ](#faq)
   - [What does work?](#what-does-work)
   - [Waydroid won't start](#waydroid-wont-start)
@@ -37,6 +38,23 @@ Install Magisk Delta in waydroid.
   * For systemd `sudo systemctl enable waydroid_magisk_ota.service && sudo systemctl start waydroid_magisk_ota.service`
   * For upstart `sudo start waydroid_magisk_ota.service`
 5. **To avoid any issues it's important to read [FAQ](#faq) before using Magisk Delta on waydroid.**
+
+# Usage
+
+```
+options:
+  -h, --help            show this help message and exit
+  -i [INSTALL], --install [INSTALL]
+                        Install Magisk Delta in Waydroid
+  -r, --remove          Remove Magisk Delta from Waydroid
+  -o, --ota             Handles OTA updates in Waydroid with Magisk Delta
+  --install-module INSTALL_MODULE
+                        Installs a Magisk module
+  --remove-module REMOVE_MODULE
+                        Removes a Magisk module
+  --list-modules        Lists all installed Magisk modules
+  --su                  Starts Magisk SU inside waydroid.
+```
 
 # FAQ
 
