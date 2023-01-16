@@ -185,9 +185,14 @@ def mount_system():
     return True
 
 def umount_system():
-    proc = subprocess.Popen(["umount", OVERLAY])
-    while not proc:
-        proc = subprocess.Popen(["umount", OVERLAY])
+    umonted = False
+    while not umonted:
+        try:
+            subprocess.run(["umount", OVERLAY], stderr=subprocess.DEVNULL)
+            umonted = True
+        except subprocess.CalledProcessError as exc:
+            umonted = False
+        time.sleep(1)
 
 def install(arch, bits, workdir=None):
     check_root()
