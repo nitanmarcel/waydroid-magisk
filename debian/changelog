@@ -1,3 +1,10 @@
+waydroid-magisk (1.0.2) bullseye; urgency=medium
+  * waydroid_magisk: restore bootanim.rc after uninstall
+  * waydroid_magisk: fix overlay detection
+  * waydroid_magisk: fix umounting system
+
+  -- Marcel Alexandru Nitan <nitan.marcel@protonmail.com>  Mon, 16 Jan 2023 18:57:10 +0200
+
 waydroid-magisk (1.0.1) bullseye; urgency=medium
 
   * waydroid_script: add fallback for old waydroid versions without dbus
