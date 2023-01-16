@@ -31,6 +31,8 @@ logging.basicConfig(
     level=logging.INFO,
     datefmt="%H:%M:%S")
 
+VERSION = '1.0.1'
+
 MAGISK_HOST = "https://huskydg.github.io/magisk-files/"
 MAGISK_CANARY = "%s/app-release.apk" % MAGISK_HOST
 
@@ -508,6 +510,7 @@ def main():
     arch, bits = get_arch()
     parser = argparse.ArgumentParser(
         description='Magisk Delta installer and manager for Waydroid.')
+    parser.add_argument("-v", "--version", action="store_true", help="Prints the version of waydroid_magisk")
     parser.add_argument("-i", "--install", nargs='?', type=str,
                         const="tmpdir", help="Install Magisk Delta in Waydroid")
     parser.add_argument("-r", "--remove", action="store_true",
@@ -520,7 +523,9 @@ def main():
     parser.add_argument("--su", action="store_true", help="Starts Magisk SU inside waydroid.")
     args = parser.parse_args()
 
-    if args.install:
+    if args.version:
+        print(VERSION)
+    elif args.install:
         if args.install == "tmpdir":
             install(arch, bits)
         else:
