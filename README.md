@@ -4,7 +4,9 @@ Install and manage Magisk Delta in waydroid.
 - [Waydroid Magisk](#waydroid-magisk)
 - [Installing Magisk on Waydroid](#installing-magisk-on-waydroid)
   - [Requirements](#requirements)
-  - [Installation Steps](#installation-steps)
+  - [Installation](#installation)
+    - [From PPA](#from-ppa)
+    - [From GitHub](#from-github)
 - [Usage](#usage)
 - [FAQ](#faq)
   - [What does work?](#what-does-work)
@@ -26,7 +28,14 @@ Install and manage Magisk Delta in waydroid.
 * make
 * git
 
-## Installation Steps
+## Installation
+### From PPA
+1. `curl -s --compressed "https://nitanmarcel.github.io/waydroid-magisk/waydroid_magisk.gpg" | gpg --dearmor | sudo tee /etc/apt/trusted.gpg.d/waydroid_magisk.gpg > /dev/null`
+2. `sudo curl -s --compressed -o /etc/apt/sources.list.d/waydroid_magisk.list https://nitanmarcel.github.io/waydroid-magisk/waydroid_magisk.list`
+3. `sudo apt update`
+4. `sudo apt install waydroid-magisk` 
+
+### From GitHub
 1. git clone `https://github.com/nitanmarcel/waydroid-magisk-installer/`
 2. run `sudo make install USE_SYSTEMD=1`
   * If using upstart (e.g Ubuntu Touch 16.04)
