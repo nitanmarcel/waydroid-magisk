@@ -16,6 +16,7 @@ import urllib.error
 import urllib.request
 import zipfile
 import subprocess
+import configparser
 
 import dbus
 
@@ -28,6 +29,7 @@ MAGISK_HOST = "https://huskydg.github.io/magisk-files/"
 MAGISK_CANARY = "%s/app-release.apk" % MAGISK_HOST
 
 WAYDROID_DIR = "/var/lib/waydroid/"
+CONFIG_FILE = os.path.join(WAYDROID_DIR, "waydroid.cfg")
 
 OVERLAY = os.path.join(WAYDROID_DIR, "overlay")
 INIT_OVERLAY = os.path.join(OVERLAY, "system", "etc", "init")
@@ -63,6 +65,20 @@ def check_root():
         return
 
 
+def has_overlay():
+    config = configparser.ConfigParser()
+    config.read(CONFIG_FILE)
+    if "mount_overlay" in config["waydroid"].keys():
+        return config["waydroid"]["mount_overlays"].lower() == "true"
+    return False
+
+
+def get_systemimg_path():
+    config = configparser.ConfigParser()
+    config.read(CONFIG_FILE)
+    return os.path.join(config["waydroid"]["images_path"], "system.img")
+
+
 def download_obj(url, destination, filename):
     try:
         with urllib.request.urlopen(url) as response:
@@ -92,8 +108,13 @@ def get_arch():
     logging.error("%s not supported" % plat)
 
 
+def is_waydroid_initialized():
+    return os.path.exists(CONFIG_FILE)
+
 def is_installed():
-    return os.path.exists(os.path.join(WAYDROID_DIR, "overlay/system/etc/init/magisk"))
+    overlay_magisk = os.path.join(WAYDROID_DIR, "overlay/system/etc/init/magisk")
+    rootfs_magisk = os.path.join(WAYDROID_DIR, "rootfs/system/etc/init/magisk")
+    return os.path.exists(overlay_magisk) or os.path.exists(rootfs_magisk)
 
 
 def WaydroidContainerDbus():
@@ -108,6 +129,15 @@ def get_waydroid_session():
         return WaydroidContainerDbus().GetSession()
     except dbus.exceptions.DBusException:
         return None
+
+def is_running():
+    return os.listdir(os.path.join(WAYDROID_DIR, "rootfs")) > 0
+
+def stop_session_if_needed():
+    waydroid_session = get_waydroid_session()
+    if waydroid_session:
+        logging.info("Stopping Waydroid")
+        WaydroidContainerDbus().Stop()
 
 def restart_session_if_needed():
     waydroid_session = get_waydroid_session()
@@ -134,10 +164,36 @@ class WaydroidFreezeUnfreeze:
         else:
             return False
 
+def mount_system():
+    if not os.path.exists(OVERLAY):
+        os.mkdir(OVERLAY)
+    rootfs = get_systemimg_path()
+    if len(os.listdir(os.path.join(WAYDROID_DIR, "rootfs"))) > 0:
+        return False
+    subprocess.run(["e2fsck", "-y", "-f", rootfs], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    subprocess.run(["resize2fs", rootfs, "2G"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    subprocess.run(["mount", "-o", "rw,loop", rootfs, OVERLAY])
+    return True
+
+def umount_system():
+    proc = subprocess.Popen(["umount", OVERLAY])
+    while not proc:
+        proc = subprocess.Popen(["umount", OVERLAY])
+
 def install(arch, bits, workdir=None):
     check_root()
+    if not has_overlay():
+        waydroid_session = get_waydroid_session()
+        if waydroid_session:
+            stop_session_if_needed()
+        mount = mount_system()
+        if not mount:
+            logging.error("Failed to mount rootfs. Make sure Waydroid is stopped during the installation.")
+            return
     if is_installed():
         logging.error("Magisk Delta already installed!")
+        if not has_overlay():
+            umount_system()
         return
     with tempfile.TemporaryDirectory(dir=workdir) as tempdir:
         logging.info("Downloading Magisk Delta")
@@ -222,16 +278,30 @@ def install(arch, bits, workdir=None):
             handle.write("\n")
 
             logging.info("Finishing installation")
-            os.makedirs(os.path.join(OVERLAY, "sbin"))
-            os.makedirs(os.path.join(OVERLAY, "system/addon.d"))
+            if not os.path.exists(os.path.join(OVERLAY, "sbin")):
+                os.makedirs(os.path.join(OVERLAY, "sbin"))
+            if not os.path.exists(os.path.join(OVERLAY, "system/addon.d")):
+                os.makedirs(os.path.join(OVERLAY, "system/addon.d"))
+            if not has_overlay():
+                umount_system()
             restart_session_if_needed()
             logging.info("Done")
 
 
 def uninstall():
     check_root()
+    if not has_overlay():
+        waydroid_session = get_waydroid_session()
+        if waydroid_session:
+            stop_session_if_needed()
+        mount = mount_system()
+        if not mount:
+            logging.error("Failed to mount rootfs. Make sure Waydroid is stopped during the installation.")
+            return
     if not is_installed():
         logging.error("Magisk Delta is not installed!")
+        if not has_overlay():
+            umount_system()
         return
     logging.info("Removing Magisk Delta")
     for file in MAGISK_FILES:
@@ -259,17 +329,20 @@ def uninstall():
         else:
             os.remove(MAGISK_OVERLAY_RW)
 
-    if os.path.exists(os.path.join(OVERLAY, "sbin")):
-        if os.path.isdir(os.path.join(OVERLAY, "sbin")):
-            os.rmdir(os.path.join(OVERLAY, "sbin"))
-        else:
-            os.remove(os.path.join(OVERLAY, "sbin"))
+    if has_overlay():
+        if os.path.exists(os.path.join(OVERLAY, "sbin")):
+            if os.path.isdir(os.path.join(OVERLAY, "sbin")):
+                os.rmdir(os.path.join(OVERLAY, "sbin"))
+            else:
+                os.remove(os.path.join(OVERLAY, "sbin"))
 
-    if os.path.exists(os.path.join(OVERLAY, "system/addon.d")):
-        if os.path.isdir(os.path.join(OVERLAY, "system/addon.d")):
-            os.rmdir(os.path.join(OVERLAY, "system/addon.d"))
-        else:
-            os.remove(os.path.join(OVERLAY, "system/addon.d"))
+        if os.path.exists(os.path.join(OVERLAY, "system/addon.d")):
+            if os.path.isdir(os.path.join(OVERLAY, "system/addon.d")):
+                os.rmdir(os.path.join(OVERLAY, "system/addon.d"))
+            else:
+                os.remove(os.path.join(OVERLAY, "system/addon.d"))
+    if not has_overlay():
+        umount_system()
     restart_session_if_needed()
     logging.info("Done")
 
@@ -301,6 +374,9 @@ def ota():
         os.remove(source)
         if os.path.isdir(os.path.join(OVERLAY, "sbin")):
             os.rmdir(os.path.join(OVERLAY, "sbin"))
+    
+    if not has_overlay():
+        raise ValueError("OTA survival not supported on non overlay Waydroid")
     while True:
         if os.path.exists(MAGISK_OVERLAY):
             if os.path.isfile(MAGISK_OVERLAY):
@@ -319,14 +395,14 @@ def ota():
         time.sleep(1)
 
 def magisk_cmd(args):
+    if not is_running():
+        logging.error("Waydroid session is not running")
+        return
     if not is_installed():
         logging.error("Magisk Delta is not installed")
         return
     waydroid_session = get_waydroid_session()
-    if not waydroid_session:
-        logging.error("Waydroid session is not started")
-        return
-    elif waydroid_session["state"] != "RUNNING":
+    if waydroid_session["state"] != "RUNNING":
         logging.error("Waydroid status is %s" % waydroid_session["status"])
         return
     with WaydroidFreezeUnfreeze(waydroid_session):
@@ -338,14 +414,14 @@ def magisk_cmd(args):
 
 def install_module(modpath):
     check_root()
+    if not is_running():
+        logging.error("Waydroid session is not running")
+        return
     if not is_installed():
         logging.error("Magisk Delta is not installed")
         return
     waydroid_session = get_waydroid_session()
-    if not waydroid_session:
-        logging.error("Waydroid session is not started")
-        return
-    elif waydroid_session["state"] != "RUNNING":
+    if waydroid_session["state"] != "RUNNING":
         logging.error("Waydroid status is %s" % waydroid_session["status"])
         return
     tmpdir = os.path.join(waydroid_session["waydroid_data"], "waydroid_tmp")
@@ -358,14 +434,14 @@ def install_module(modpath):
     restart_session_if_needed()
 
 def list_modules():
+    if not is_running():
+        logging.error("Waydroid session is not running")
+        return
     if not is_installed():
         logging.error("Magisk Delta is not installed")
         return
     waydroid_session = get_waydroid_session()
-    if not waydroid_session:
-        logging.error("Waydroid session is not started")
-        return
-    elif waydroid_session["state"] != "RUNNING":
+    if waydroid_session["state"] != "RUNNING":
         logging.error("Waydroid status is %s" % waydroid_session["state"])
         return
     with WaydroidFreezeUnfreeze(waydroid_session):
@@ -377,13 +453,13 @@ def list_modules():
 
 def remove_module(modname):
     check_root()
+    if not is_running():
+        logging.error("Waydroid session is not running")
+        return
     if not is_installed():
         logging.error("Magisk Delta is not installed")
         return
     waydroid_session = get_waydroid_session()
-    if not waydroid_session:
-        logging.error("Waydroid session is not started")
-        return
     with WaydroidFreezeUnfreeze(waydroid_session):
         if waydroid_session["state"] != "RUNNING":
             logging.error("Waydroid status is %s" % waydroid_session["state"])
@@ -400,13 +476,13 @@ def remove_module(modname):
 
 def su():
     check_root()
+    if not is_running():
+        logging.error("Waydroid session is not running")
+        return
     if not is_installed():
         logging.error("Magisk Delta is not installed")
         return
     waydroid_session = get_waydroid_session()
-    if not waydroid_session:
-        logging.error("Waydroid session is not started")
-        return
     with WaydroidFreezeUnfreeze(waydroid_session):
         if waydroid_session["state"] != "RUNNING":
             logging.error("Waydroid status is %s" % waydroid_session["state"])
@@ -419,6 +495,9 @@ def su():
 
 
 def main():
+    if not is_waydroid_initialized():
+        logging.error("Waydroid is not initialized.")
+        return
     arch, bits = get_arch()
     parser = argparse.ArgumentParser(
         description='Magisk Delta installer for Waydroid.')
