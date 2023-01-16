@@ -1,3 +1,11 @@
+waydroid-magisk (1.0.1) bullseye; urgency=medium
+
+  * waydroid_script: add fallback for old waydroid versions without dbus
+  * waydroid_script: add version argument
+  * debian: bump version to 1.0.1
+
+ -- Marcel Alexandru Nitan <nitan.marcel@protonmail.com>  Mon, 16 Jan 2023 14:38:45 +0200
+
 waydroid-magisk (1.0.0) bullseye; urgency=medium
 
   * Initial release
