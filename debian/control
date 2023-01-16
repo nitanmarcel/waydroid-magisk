@@ -13,6 +13,5 @@ Package: waydroid-magisk
 Architecture: all
 Depends: ${misc:Depends},
          ${python3:Depends},
-         python3-dbus,
-         dbus
+         waydroid
 Description: Install and manage Magisk in Waydroid
