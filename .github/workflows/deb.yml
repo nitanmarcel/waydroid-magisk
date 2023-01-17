@@ -2,6 +2,9 @@ name: Deb build
 
 on:
   workflow_dispatch:
+  push:
+    paths:
+      - 'debian/changelog'
 
 jobs:
   build:
