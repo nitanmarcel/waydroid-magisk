@@ -122,7 +122,15 @@ def is_waydroid_initialized():
 def is_installed():
     overlay_magisk = os.path.join(WAYDROID_DIR, "overlay/system/etc/init/magisk")
     rootfs_magisk = os.path.join(WAYDROID_DIR, "rootfs/system/etc/init/magisk")
-    return os.path.exists(overlay_magisk) or os.path.exists(rootfs_magisk)
+    installed = os.path.exists(overlay_magisk)
+    if not has_overlay():
+        if len(os.listdir(os.path.join(WAYDROID_DIR, "rootfs"))) > 0:
+            installed = os.path.exists(rootfs_magisk)
+        else:
+            mount_system()
+            installed = os.path.exists(overlay_magisk)
+            umount_system()
+    return installed
 
 
 def WaydroidContainerDbus():
@@ -196,6 +204,9 @@ def umount_system():
 
 def install(arch, bits, workdir=None):
     check_root()
+    if is_installed():
+        logging.error("Magisk Delta already installed!")
+        return
     if not has_overlay():
         waydroid_session = get_waydroid_session()
         if waydroid_session:
@@ -204,11 +215,6 @@ def install(arch, bits, workdir=None):
         if not mount:
             logging.error("Failed to mount rootfs. Make sure Waydroid is stopped during the installation.")
             return
-    if is_installed():
-        logging.error("Magisk Delta already installed!")
-        if not has_overlay():
-            umount_system()
-        return
     with tempfile.TemporaryDirectory(dir=workdir) as tempdir:
         logging.info("Downloading Magisk Delta")
         download_obj(MAGISK_CANARY, tempdir, "magisk-delta.apk")
@@ -304,6 +310,8 @@ def install(arch, bits, workdir=None):
 
 def uninstall():
     check_root()
+    if not is_installed():
+        logging.error("Magisk Delta is not installed!")
     if not has_overlay():
         waydroid_session = get_waydroid_session()
         if waydroid_session:
@@ -312,11 +320,6 @@ def uninstall():
         if not mount:
             logging.error("Failed to mount rootfs. Make sure Waydroid is stopped during the installation.")
             return
-    if not is_installed():
-        logging.error("Magisk Delta is not installed!")
-        if not has_overlay():
-            umount_system()
-        return
     logging.info("Removing Magisk Delta")
     shutil.copyfile(os.path.join(INIT_OVERLAY, "bootanim.rc.gz"), os.path.join(WAYDROID_DIR, "bootanim.rc.gz"))
     for file in MAGISK_FILES:
