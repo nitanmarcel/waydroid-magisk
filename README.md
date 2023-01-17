@@ -34,6 +34,8 @@ Install and manage Magisk Delta in waydroid.
 2. `sudo curl -s --compressed -o /etc/apt/sources.list.d/waydroid_magisk.list https://nitanmarcel.github.io/waydroid-magisk/waydroid_magisk.list`
 3. `sudo apt update`
 4. `sudo apt install waydroid-magisk` 
+5. run `sudo waydroid_magisk --install` to install Magisk
+6. **To avoid any issues it's important to read [FAQ](#faq) before using Magisk Delta on waydroid.**
 
 ### From GitHub
 1. git clone `https://github.com/nitanmarcel/waydroid-magisk-installer/`
