@@ -31,7 +31,7 @@ logging.basicConfig(
     level=logging.INFO,
     datefmt="%H:%M:%S")
 
-VERSION = '1.0.2'
+VERSION = '1.0.3'
 
 MAGISK_HOST = "https://huskydg.github.io/magisk-files/"
 MAGISK_CANARY = "%s/app-release.apk" % MAGISK_HOST
