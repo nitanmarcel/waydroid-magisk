@@ -1,0 +1,79 @@
+name: Deb build
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          path: ./package/waydroid-magisk
+      - name: Install depedencies
+        run: |
+          sudo apt install -y build-essential binutils lintian debhelper dh-make devscripts equivs gzip
+          sudo mk-build-deps -i
+          sudo rm waydroid-magisk-build-deps_*
+        working-directory: ./package/waydroid-magisk
+      - name: Build package
+        run: |
+          dpkg-buildpackage -us -uc -Zgzip
+        working-directory: ./package/waydroid-magisk
+      - uses: actions/upload-artifact@v2
+        with:
+          if-no-files-found: error
+          path: |
+            ./package/*.deb
+  publish:
+    name: Publish
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          ref: repo
+          submodules: true
+      - name: Import GPG key
+        uses: crazy-max/ghaction-import-gpg@v5
+        with:
+          gpg_private_key: ${{ secrets.GPG_PRIVATE_KEY }}
+          passphrase: ${{ secrets.PASSPHRASE }}
+      - name: Download deb artifact
+        uses: actions/download-artifact@v3
+        with:
+          path: artifacts
+      - name: Copy deb packages
+        run: |
+          mv artifacts/*/*.deb packages/
+          rm -rf artifacts
+      - name: Update and sign apt repository
+        run: |
+          EMAIL="nitan.marcel@protonmail.com"
+          dpkg-scanpackages --multiversion . > Packages
+          gzip -k -f Packages
+          apt-ftparchive release . > Release
+          gpg --default-key "${EMAIL}" -abs -o - Release > Release.gpg
+          gpg --default-key "${EMAIL}" --clearsign -o - Release > InRelease
+      - name: Push apt repository changes
+        uses: actions-js/push@master
+        with:
+          github_token: ${{ secrets.GH_TOKEN }}
+          author_name: Marcel Alexandru Nitan
+          author_email: nitan.marcel@protonmail.com
+          message: "ci: update packages"
+          branch: "repo"
+  cleanup_job:
+    name: Cleanup
+    needs: publish
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+    - uses: Mattraks/delete-workflow-runs@v2
+      with:
+        token: ${{ github.token }}
+        repository: ${{ github.repository }}
+        retain_days: 0
+        keep_minimum_runs: 1
+
