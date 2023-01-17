@@ -69,8 +69,8 @@ MAGISK_FILES = [
 
 def check_root():
     if not os.getuid() == 0:
-        logging.error("This app needs to be ran as a priviliged user!")
-        return
+        return False
+    return True
 
 
 def has_overlay():
@@ -203,7 +203,10 @@ def umount_system():
         time.sleep(1)
 
 def install(arch, bits, workdir=None):
-    check_root()
+    is_root = check_root()
+    if not is_root:
+        logging.error("This command needs to be ran as a priviliged user!")
+        return
     if is_installed():
         logging.error("Magisk Delta already installed!")
         return
@@ -309,7 +312,10 @@ def install(arch, bits, workdir=None):
 
 
 def uninstall():
-    check_root()
+    is_root = check_root()
+    if not is_root:
+        logging.error("This command needs to be ran as a priviliged user!")
+        return
     if not is_installed():
         logging.error("Magisk Delta is not installed!")
     if not has_overlay():
@@ -435,7 +441,10 @@ def magisk_cmd(args):
 
 
 def install_module(modpath):
-    check_root()
+    is_root = check_root()
+    if not is_root:
+        logging.error("This command needs to be ran as a priviliged user!")
+        return
     if not is_running():
         logging.error("Waydroid session is not running")
         return
@@ -474,7 +483,10 @@ def list_modules():
         print("\n".join("- %s" % mod for mod in os.listdir(modpath)))
 
 def remove_module(modname):
-    check_root()
+    is_root = check_root()
+    if not is_root:
+        logging.error("This command needs to be ran as a priviliged user!")
+        return
     if not is_running():
         logging.error("Waydroid session is not running")
         return
@@ -497,7 +509,10 @@ def remove_module(modname):
         restart_session_if_needed()
 
 def su():
-    check_root()
+    is_root = check_root()
+    if not is_root:
+        logging.error("This command needs to be ran as a priviliged user!")
+        return
     if not is_running():
         logging.error("Waydroid session is not running")
         return
