@@ -431,7 +431,7 @@ def magisk_cmd(args):
         return
     waydroid_session = get_waydroid_session()
     if waydroid_session["state"] != "RUNNING":
-        logging.error("Waydroid status is %s" % waydroid_session["status"])
+        logging.error("Waydroid state is %s" % waydroid_session["state"])
         return
     with WaydroidFreezeUnfreeze(waydroid_session):
         lxc = os.path.join(WAYDROID_DIR, "lxc")
@@ -453,7 +453,7 @@ def install_module(modpath):
         return
     waydroid_session = get_waydroid_session()
     if waydroid_session["state"] != "RUNNING":
-        logging.error("Waydroid status is %s" % waydroid_session["status"])
+        logging.error("Waydroid state is %s" % waydroid_session["state"])
         return
     tmpdir = os.path.join(waydroid_session["waydroid_data"], "waydroid_tmp")
     if not os.path.exists(tmpdir):
