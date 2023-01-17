@@ -177,7 +177,7 @@ class WaydroidFreezeUnfreeze:
     @property
     def _frozen(self):
         if self._session:
-            return self.session["state"] == "FROZEN"
+            return self._session["state"] == "FROZEN"
         else:
             return False
 
