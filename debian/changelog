@@ -1,3 +1,10 @@
+waydroid-magisk (1.0.4) bullseye; urgency=medium
+  * waydroid_magisk: fix unfreezing context
+  * waydroid_magisk: fix root check
+  * waydroid_magisk: fix waydroid state check
+  
+  -- Marcel Alexandru Nitan <nitan.marcel@protonmail.com>  Tue, 17 Jan 2023 21:47:14 +0200
+
 waydroid-magisk (1.0.3) bullseye; urgency=medium
   * waydroid_magisk: fix installation detection in overlay optout
 
