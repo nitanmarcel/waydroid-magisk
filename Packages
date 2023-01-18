@@ -65,10 +65,10 @@ Maintainer: Erfan Abdi <erfangplus@gmail.com>
 Installed-Size: 33
 Depends: python3:any, waydroid
 Filename: ./packages/waydroid-magisk_1.0.5_all.deb
-Size: 6590
-MD5sum: d17f8efd1cae3518a215d99a2bbe5b0d
-SHA1: 0c94056ade032f847f1b2147d463ceedec5b4655
-SHA256: af4a8c7655a2195b2bf2a4fe5c1281662fcced0187b385d2b3356f16b5190a09
+Size: 6626
+MD5sum: 5c27442dead3b8b706138323cf9c7945
+SHA1: 6b2db0c1c34d1971b5aa31b68261dcfa3d0dcc17
+SHA256: 70acd4477667c8f772b90bec77ab131d7400d4e6f6884b8c9a9326106502ff19
 Section: misc
 Priority: optional
 Description: Install and manage Magisk in Waydroid
