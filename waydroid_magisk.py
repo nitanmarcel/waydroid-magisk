@@ -430,7 +430,7 @@ def magisk_cmd(args):
         logging.error("Magisk Delta is not installed")
         return
     waydroid_session = get_waydroid_session()
-    if waydroid_session["state"] != "RUNNING":
+    if waydroid_session["state"] not in ["RUNNING", "FROZEN"]:
         logging.error("Waydroid state is %s" % waydroid_session["state"])
         return
     with WaydroidFreezeUnfreeze(waydroid_session):
@@ -452,7 +452,7 @@ def install_module(modpath):
         logging.error("Magisk Delta is not installed")
         return
     waydroid_session = get_waydroid_session()
-    if waydroid_session["state"] != "RUNNING":
+    if waydroid_session["state"] not in ["RUNNING", "FROZEN"]:
         logging.error("Waydroid state is %s" % waydroid_session["state"])
         return
     tmpdir = os.path.join(waydroid_session["waydroid_data"], "waydroid_tmp")
@@ -472,7 +472,7 @@ def list_modules():
         logging.error("Magisk Delta is not installed")
         return
     waydroid_session = get_waydroid_session()
-    if waydroid_session["state"] != "RUNNING":
+    if waydroid_session["state"] not in ["RUNNING", "FROZEN"]:
         logging.error("Waydroid status is %s" % waydroid_session["state"])
         return
     with WaydroidFreezeUnfreeze(waydroid_session):
@@ -495,7 +495,7 @@ def remove_module(modname):
         return
     waydroid_session = get_waydroid_session()
     with WaydroidFreezeUnfreeze(waydroid_session):
-        if waydroid_session["state"] != "RUNNING":
+        if waydroid_session["state"] not in ["RUNNING", "FROZEN"]:
             logging.error("Waydroid status is %s" % waydroid_session["state"])
             return
         modpath = os.path.join(waydroid_session["waydroid_data"], "adb", "modules")    
@@ -521,7 +521,7 @@ def su():
         return
     waydroid_session = get_waydroid_session()
     with WaydroidFreezeUnfreeze(waydroid_session):
-        if waydroid_session["state"] != "RUNNING":
+        if waydroid_session["state"] not in ["RUNNING", "FROZEN"]:
             logging.error("Waydroid status is %s" % waydroid_session["state"])
             return
         lxc = os.path.join(WAYDROID_DIR, "lxc")
