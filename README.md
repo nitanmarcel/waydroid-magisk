@@ -14,7 +14,6 @@ Install and manage Magisk Delta in waydroid.
   - [No internet connection](#no-internet-connection)
   - [Magisk modules not working or not showing as installed](#magisk-modules-not-working-or-not-showing-as-installed)
   - [Updating](#updating)
-  - [Does this survive Waydroid updates?](#does-this-survive-waydroid-updates)
   - [Does Zygisk work?](#does-zygisk-work)
   - [I've enabled Zygisk in Magisk Delta Stable, updated waydroid images!!](#ive-enabled-zygisk-in-magisk-delta-stable-updated-waydroid-images)
   - [How is this different from other scripts?](#how-is-this-different-from-other-scripts)
@@ -34,7 +33,7 @@ Install and manage Magisk Delta in waydroid.
 2. `sudo curl -s --compressed -o /etc/apt/sources.list.d/waydroid_magisk.list https://nitanmarcel.github.io/waydroid-magisk/waydroid_magisk.list`
 3. `sudo apt update`
 4. `sudo apt install waydroid-magisk` 
-5. run `sudo waydroid_magisk --install` to install Magisk
+5. run `sudo waydroid_magisk install` to install Magisk
 6. **To avoid any issues it's important to read [FAQ](#faq) before using Magisk Delta on waydroid.**
 
 ### From GitHub
@@ -42,9 +41,9 @@ Install and manage Magisk Delta in waydroid.
 2. run `sudo make install USE_SYSTEMD=1`
   * If using upstart (e.g Ubuntu Touch 16.04)
   * run `sudo make install USE_UPSTART=1`
-3. run `sudo waydroid_magisk --install` to install Magisk
+3. run `sudo waydroid_magisk install` to install Magisk
   * Ubuntu Touch requires setting an working directory in `/home/phablet`
-    * `sudo waydroid_magisk --install /home/phablet/magisk_waydroid`
+    * `sudo waydroid_magisk install --tmpdir /home/phablet/magisk_waydroid`
 4. enable ota survival service
   * For systemd `sudo systemctl enable waydroid_magisk_ota.service && sudo systemctl start waydroid_magisk_ota.service`
   * For upstart `sudo start waydroid_magisk_ota.service`
@@ -53,18 +52,21 @@ Install and manage Magisk Delta in waydroid.
 # Usage
 
 ```
+usage: waydroid_magisk.py [-h] [-v] [-o] {install,remove,module,su} ...
+
+Magisk Delta installer and manager for Waydroid
+
+positional arguments:
+  {install,remove,module,su}
+    install             Install Magisk Delta in Waydroid
+    remove              Remove Magisk Delta from Waydroid
+    module              Manage modules in Magisk Delta
+    su                  Open magisk su shell inside Waydroid
+
 options:
   -h, --help            show this help message and exit
-  -i [INSTALL], --install [INSTALL]
-                        Install Magisk Delta in Waydroid
-  -r, --remove          Remove Magisk Delta from Waydroid
-  -o, --ota             Handles OTA updates in Waydroid with Magisk Delta
-  --install-module INSTALL_MODULE
-                        Installs a Magisk module
-  --remove-module REMOVE_MODULE
-                        Removes a Magisk module
-  --list-modules        Lists all installed Magisk modules
-  --su                  Starts Magisk SU inside waydroid.
+  -v, --version         Print version
+  -o, --ota             Handles survival during Waydroid updates (overlay only)
 ```
 
 # FAQ
@@ -86,20 +88,17 @@ Try restarting Waydroid using either systemd or init (depending on your system).
 Currently, modules only work with Magisk Delta Canary. Download and install the apk in Waydroid, and update by following the instructions in the "Updating" section below.
 
 ## Updating
-Use Magisk Delta to install Magisk directly into the system partition. Always update through the Magisk app, not the `install.sh` script.
-
-## Does this survive Waydroid updates?
-If the Android system is updated, Magisk will be removed and you'll need to run `install.sh` again to reinstall it.
+* Using Magisk Delta to install Magisk directly into the system partition.
+* Using `waydroid_magisk install --update`.
 
 ## Does Zygisk work?
-Zygisk only works with Magisk Delta Canary which gets installed by default with `install.sh`. Enabling it with Magisk Delta Stable will result in waydroid not booting.Debug and updating waydroid as it will require running `install.sh` which reverts to stable magisk and will stop waydroid from booting. -->
+Zygisk only works with Magisk Delta Canary which gets installed by default.
 
 ## I've enabled Zygisk in Magisk Delta Stable, updated waydroid images!!
 Delete `/data/adb/magisk.db` inside `waydroid shell`. Will clear Magisk's database and disable zygdisk.
 
 ## How is this different from other scripts?
-* This script installs Magisk Delta, a fork of Magisk with some reimplemented features such as Magisk Hide and better support for Android emulators.
-* It follows the same installation workflow as Magisk, allowing users to update through the Magisk Delta Manager instead of relying on the `install.sh` script from this repository.
+It focuses on being more than a Magisk updated or installer, by providing tools to easily manage Magisk from the command line.
 
 ## What is Magisk Delta?
 Magisk Delta is a fork of the official Magisk Manager with the old Magisk Hide feature re-added and other new features. You can find a list of differences between Magisk Delta and official Magisk [here](https://github.com/HuskyDG/magisk-files/blob/main/note_stable.md#diffs-to-official-magisk).
