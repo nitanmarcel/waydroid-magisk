@@ -1,3 +1,7 @@
+waydroid-magisk (1.0.5) bullseye; urgency=medium
+  * waydroid_magisk: quickfix umounting rootfs
+
+ -- Marcel Alexandru Nitan <nitan.marcel@protonmail.com>  Wed, 18 Jan 2023 17:11:46 +0200
 
 waydroid-magisk (1.0.5) bullseye; urgency=medium
   * waydroid_magisk: fix waydroid not getting unfreezed
