@@ -202,7 +202,7 @@ def umount_system():
         mounted = os.path.ismount(OVERLAY)
         time.sleep(1)
 
-def install(arch, bits, workdir=None):
+def install(arch, bits, workdir=None, restart_after=True):
     is_root = check_root()
     if not is_root:
         logging.error("This command needs to be ran as a priviliged user!")
@@ -307,17 +307,20 @@ def install(arch, bits, workdir=None):
                 os.makedirs(os.path.join(OVERLAY, "system/addon.d"))
         if not has_overlay():
             umount_system()
-        restart_session_if_needed()
+        if restart_after:
+            restart_session_if_needed()
         logging.info("Done")
+        return True
 
 
-def uninstall():
+def uninstall(restart_after=True):
     is_root = check_root()
     if not is_root:
         logging.error("This command needs to be ran as a priviliged user!")
         return
     if not is_installed():
         logging.error("Magisk Delta is not installed!")
+        return
     if not has_overlay():
         waydroid_session = get_waydroid_session()
         if waydroid_session:
@@ -371,9 +374,17 @@ def uninstall():
                 shutil.copyfileobj(gzfile, rcfile)
         umount_system()
     os.remove(os.path.join(WAYDROID_DIR, "bootanim.rc.gz"))
-    restart_session_if_needed()
+    if restart_after:
+        restart_session_if_needed()
     logging.info("Done")
+    return True
 
+def update(arch, bits):
+    uninstalled = uninstall(restart_after=False)
+    if uninstalled:
+        installed = install(arch, bits)
+        if installed:
+            logging.info("Manually update Magisk Manager after booting Waydroid.")
 
 def ota():
     # TODO: Clean this mess I wrote a few days ago when I feel like. And maybe try to find a better way to manage this.
@@ -543,6 +554,8 @@ def main():
                         const="tmpdir", help="Install Magisk Delta in Waydroid")
     parser.add_argument("-r", "--remove", action="store_true",
                         help="Remove Magisk Delta from Waydroid")
+    parser.add_argument("-u", "--update", action="store_true",
+                        help="Update Magisk Delta in Waydroid")
     parser.add_argument("-o", "--ota", action="store_true",
                         help="Handles OTA updates in Waydroid with Magisk Delta")
     parser.add_argument("--install-module", help="Installs a Magisk module")
@@ -560,6 +573,8 @@ def main():
             install(arch, bits, args.install)   
     elif args.remove:
         uninstall()
+    elif args.update:
+        update(arch, bits)
     elif args.install_module:
         install_module(args.install_module)
     elif args.remove_module:
