@@ -1,3 +1,8 @@
+waydroid-magisk (1.1.1) bullseye; urgency=medium
+  * waydroid_magisk: fix install with no temporary directory given
+
+ -- Marcel Alexandru Nitan <nitan.marcel@protonmail.com>  Wed, 19 Jan 2023 22:56:13 +0200
+
 waydroid-magisk (1.1.0) bullseye; urgency=medium
   * waydroid_magisk: add update command
   * waydroid_magisk: allow user to pick Magisk Delta update channel

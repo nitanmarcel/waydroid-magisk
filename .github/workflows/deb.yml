@@ -16,9 +16,7 @@ jobs:
           path: ./package/waydroid-magisk
       - name: Install depedencies
         run: |
-          sudo apt install -y build-essential binutils lintian debhelper dh-make devscripts equivs gzip
-          sudo mk-build-deps -i
-          sudo rm waydroid-magisk-build-deps_*
+          sudo apt install -y build-essential binutils lintian debhelper dh-make devscripts equivs gzip dh-python python3
         working-directory: ./package/waydroid-magisk
       - name: Build package
         run: |
