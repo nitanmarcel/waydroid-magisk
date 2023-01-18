@@ -231,8 +231,9 @@ def install(arch, bits, magisk_url, workdir=None, restart_after=True):
         if not mount:
             logging.error("Failed to mount rootfs. Make sure Waydroid is stopped during the installation.")
             return
-    if not os.path.exists(workdir):
-        os.makedirs(workdir)
+    if workdir:
+        if not os.path.exists(workdir):
+            os.makedirs(workdir)
     with tempfile.TemporaryDirectory(dir=workdir) as tempdir:
         logging.info("Downloading Magisk Delta")
         download_obj(magisk_url, tempdir, "magisk-delta.apk")
