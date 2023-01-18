@@ -189,17 +189,17 @@ def mount_system():
         return False
     subprocess.run(["e2fsck", "-y", "-f", rootfs], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     subprocess.run(["resize2fs", rootfs, "2G"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-    subprocess.run(["mount", "-o", "rw,loop", rootfs, OVERLAY])
+    subprocess.run(["mount", "-o", "rw,loop", rootfs, OVERLAY], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     return True
 
 def umount_system():
-    umonted = False
-    while not umonted:
+    mounted = os.path.ismount(OVERLAY)
+    while mounted:
         try:
-            subprocess.run(["umount", OVERLAY], stderr=subprocess.DEVNULL)
-            umonted = True
+            subprocess.run(["umount", OVERLAY], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         except subprocess.CalledProcessError as exc:
-            umonted = False
+            pass
+        mounted = os.path.ismount(OVERLAY)
         time.sleep(1)
 
 def install(arch, bits, workdir=None):
@@ -305,10 +305,10 @@ def install(arch, bits, workdir=None):
                 os.makedirs(os.path.join(OVERLAY, "sbin"))
             if not os.path.exists(os.path.join(OVERLAY, "system/addon.d")):
                 os.makedirs(os.path.join(OVERLAY, "system/addon.d"))
-            if not has_overlay():
-                umount_system()
-            restart_session_if_needed()
-            logging.info("Done")
+        if not has_overlay():
+            umount_system()
+        restart_session_if_needed()
+        logging.info("Done")
 
 
 def uninstall():
