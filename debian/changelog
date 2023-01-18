@@ -1,3 +1,10 @@
+waydroid-magisk (1.1.0) bullseye; urgency=medium
+  * waydroid_magisk: add update command
+  * waydroid_magisk: allow user to pick Magisk Delta update channel
+  * waydroid_magisk: rewrite how arguments are parsed
+
+ -- Marcel Alexandru Nitan <nitan.marcel@protonmail.com>  Wed, 19 Jan 2023 20:49:04 +0200
+
 waydroid-magisk (1.0.5) bullseye; urgency=medium
   * waydroid_magisk: quickfix umounting rootfs
 
