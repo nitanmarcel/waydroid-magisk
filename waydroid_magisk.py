@@ -154,13 +154,13 @@ def stop_session_if_needed():
     waydroid_session = get_waydroid_session()
     if waydroid_session:
         logging.info("Stopping Waydroid")
-        WaydroidContainerDbus().Stop()
+        WaydroidContainerDbus().Stop(True)
 
 def restart_session_if_needed():
     waydroid_session = get_waydroid_session()
     if waydroid_session:
         logging.info("Stopping Waydroid")
-        WaydroidContainerDbus().Stop()
+        WaydroidContainerDbus().Stop(False)
         logging.info("Starting Waydroid")
         WaydroidContainerDbus().Start(waydroid_session)
 
@@ -171,7 +171,7 @@ class WaydroidFreezeUnfreeze:
     def __enter__(self):
         if self._frozen:
             WaydroidContainerDbus().Unfreeze()
-    def __exit__(self, exc_type, exc_value, tracebac):
+    def __exit__(self, exc_type, exc_value, traceback):
         if self._frozen:
             WaydroidContainerDbus().Freeze()
     @property
