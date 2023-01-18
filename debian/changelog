@@ -1,3 +1,9 @@
+
+waydroid-magisk (1.0.5) bullseye; urgency=medium
+  * waydroid_magisk: fix waydroid not getting unfreezed
+
+ -- Marcel Alexandru Nitan <nitan.marcel@protonmail.com>  Wed, 18 Jan 2023 16:39:07 +0200
+
 waydroid-magisk (1.0.5) bullseye; urgency=medium
   * waydroid_magisk: Stop waydroid container without killing the session deamon
 
