@@ -231,6 +231,8 @@ def install(arch, bits, magisk_url, workdir=None, restart_after=True):
         if not mount:
             logging.error("Failed to mount rootfs. Make sure Waydroid is stopped during the installation.")
             return
+    if not os.path.exists(workdir):
+        os.makedirs(workdir)
     with tempfile.TemporaryDirectory(dir=workdir) as tempdir:
         logging.info("Downloading Magisk Delta")
         download_obj(magisk_url, tempdir, "magisk-delta.apk")
@@ -392,10 +394,10 @@ def uninstall(restart_after=True):
     logging.info("Done")
     return True
 
-def update(arch, bits, magisk_url):
+def update(arch, bits, magisk_url, workdir=None):
     uninstalled = uninstall(restart_after=False)
     if uninstalled:
-        installed = install(arch, bits, magisk_url)
+        installed = install(arch, bits, magisk_url=magisk_url, workdir=workdir)
         if installed:
             logging.info("Manually update Magisk Manager after booting Waydroid.")
 
@@ -560,56 +562,60 @@ def main():
         logging.error("Waydroid is not initialized.")
         return
     arch, bits = get_arch()
-    parser = argparse.ArgumentParser(
-        description='Magisk Delta installer and manager for Waydroid.')
-    parser.add_argument("-v", "--version", action="store_true", help="Prints the version of waydroid_magisk")
-    parser.add_argument("-i", "--install", nargs='?', type=str,
-                        const="tmpdir", help="Install Magisk Delta in Waydroid")
-    parser.add_argument("-r", "--remove", action="store_true",
-                        help="Remove Magisk Delta from Waydroid")
-    parser.add_argument("-u", "--update", action="store_true",
-                        help="Update Magisk Delta in Waydroid")
-    parser.add_argument("-o", "--ota", action="store_true",
-                        help="Handles OTA updates in Waydroid with Magisk Delta")
-    parser.add_argument("--install-module", help="Installs a Magisk module")
-    parser.add_argument("--remove-module", help="Removes a Magisk module")
-    parser.add_argument("--list-modules", action="store_true", help="Lists all installed Magisk modules")
-    parser.add_argument("--su", action="store_true", help="Starts Magisk SU inside waydroid.")
-    parser.add_argument("--stable", nargs='?', type=str, help="Magisk Delta Stable channel")
-    parser.add_argument("--canary", nargs='?', type=str, help="Magisk Delta Canary channel")
-    parser.add_argument("--debug", nargs='?', type=str, help="Magisk Delta Debug channel")
-    
+
+    parser = argparse.ArgumentParser(description="Magisk Delta installer and manager for Waydroid")
+    parser.add_argument("-v", "--version", action="store_true", help="Print version")
+    parser.add_argument("-o", "--ota", action="store_true", help="Handles survival during Waydroid updates (overlay only)")
+
+    subparsers = parser.add_subparsers(dest="command")
+    parser_install = subparsers.add_parser("install", help="Install Magisk Delta in Waydroid")
+    parser_install.add_argument("-u", "--update", action="store_true", help="Update Magisk Delta")
+    parser_install.add_argument("-c","--canary", action="store_true", help="Install Magisk Delta canary channel (default canary)")
+    parser_install.add_argument("-d","--debug", action="store_true", help="Install Magisk Delta debug channel (default canary)")
+    parser_install.add_argument("-t", "--tmpdir", nargs="?", type=str, default="tmpdir", help="Custom path to use as an temporary  directory")
+
+    subparsers.add_parser("remove", help="Remove Magisk Delta from Waydroid")
+
+    parser_modules = subparsers.add_parser("module", help="Manage modules in Magisk Delta")
+    parser_modules_subparser = parser_modules.add_subparsers(dest="command_module")
+    parser_modules_install = parser_modules_subparser.add_parser("install", help="Install magisk module")
+    parser_modules_install.add_argument("MODULE", type=str, help="Path to magisk module to install")
+    parser_modules_remove = parser_modules_subparser.add_parser("remove", help="Remove magisk module")
+    parser_modules_remove.add_argument("MODULE", type=str, help="Module name to remove")
+    parser_modules_list = parser_modules_subparser.add_parser("list", help="List all installed magisk modules")
+
+    subparsers.add_parser("su", help="Open magisk su shell inside Waydroid")
+
     args = parser.parse_args()
 
-
-    js = download_json("https://raw.githubusercontent.com/nitanmarcel/waydroid-magisk/main/magisk.json")
-    magisk_url = js["canary"]
-    magisk_url = js["canary" if args.canary else "debug" if args.debug else "canary"] # stable is disabled for now
-    if args.version:
-        print(VERSION)
-    elif args.install:
-        if args.install == "tmpdir":
-            install(arch, bits, magisk_url)
+    if args.command == "install":
+        magisk_channels = download_json("https://raw.githubusercontent.com/nitanmarcel/waydroid-magisk/main/magisk.json")
+        magisk_url = magisk_channels["canary"]
+        magisk_url = magisk_channels["canary" if args.canary else "debug" if args.debug else "canary"] # stable is disabled for now
+        install_fnc = install
+        if args.update:
+            install_fnc = update
+        if args.tmpdir == "tmpdir":
+            install_fnc(arch, bits, magisk_url, restart_after=True)
         else:
-            install(arch, bits, magisk_url, workdir=args.install)
-    elif args.remove:
-        uninstall()
-    elif args.update:
-        update(arch, bits, magisk_url)
-    elif args.install_module:
-        install_module(args.install_module)
-    elif args.remove_module:
-        remove_module(args.remove_module)
-    elif args.list_modules:
-        list_modules()
-    elif args.su:
+            install_fnc(arch, bits, magisk_url=magisk_url, workdir=args.tmpdir, restart_after=True)
+    elif args.command == "remove":
+        uninstall(restart_after=True)
+    elif args.command == "module":
+        if args.command_module == "install":
+            install_module(args.MODULE)
+        if args.command_module == "remove":
+            remove_module(args.MODULE)
+        if args.command_module == "list":
+            list_modules()
+    elif args.command == "su":
         su()
     elif args.ota:
-        if not os.environ.get("WMAGISKD_SERVICE"):
-            exit()
         ota()
+    elif args.version:
+        print(VERSION)
     else:
-        logging.info("Run waydroid_magisk -h for usage information.")
+        parser.print_help()
 
 
 if __name__ == "__main__":
