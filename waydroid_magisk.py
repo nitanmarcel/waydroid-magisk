@@ -17,7 +17,7 @@ import urllib.request
 import zipfile
 import subprocess
 import configparser
-
+import json
 
 WITH_DBUS = True
 
@@ -96,6 +96,19 @@ def download_obj(url, destination, filename):
         if exc.code == 404:
             logging.error("Failed to download %s" % filename)
             return
+    return True
+
+
+def download_json(url):
+    result = {}
+    try:
+        with urllib.request.urlopen(url) as response:
+            data = response.read()
+            result = json.loads(data.decode())
+    except urllib.error.HTTPError as exc:
+        if exc.code == 404:
+            logging.error("Failed to download Magisk Delta channel info")
+    return result
 
 
 def get_arch():
@@ -202,7 +215,7 @@ def umount_system():
         mounted = os.path.ismount(OVERLAY)
         time.sleep(1)
 
-def install(arch, bits, workdir=None, restart_after=True):
+def install(arch, bits, magisk_url, workdir=None, restart_after=True):
     is_root = check_root()
     if not is_root:
         logging.error("This command needs to be ran as a priviliged user!")
@@ -220,7 +233,7 @@ def install(arch, bits, workdir=None, restart_after=True):
             return
     with tempfile.TemporaryDirectory(dir=workdir) as tempdir:
         logging.info("Downloading Magisk Delta")
-        download_obj(MAGISK_CANARY, tempdir, "magisk-delta.apk")
+        download_obj(magisk_url, tempdir, "magisk-delta.apk")
         logging.info("Extracting Magisk Delta")
         with zipfile.ZipFile(os.path.join(tempdir, "magisk-delta.apk")) as handle:
             handle.extractall(tempdir)
@@ -379,10 +392,10 @@ def uninstall(restart_after=True):
     logging.info("Done")
     return True
 
-def update(arch, bits):
+def update(arch, bits, magisk_url):
     uninstalled = uninstall(restart_after=False)
     if uninstalled:
-        installed = install(arch, bits)
+        installed = install(arch, bits, magisk_url)
         if installed:
             logging.info("Manually update Magisk Manager after booting Waydroid.")
 
@@ -562,19 +575,27 @@ def main():
     parser.add_argument("--remove-module", help="Removes a Magisk module")
     parser.add_argument("--list-modules", action="store_true", help="Lists all installed Magisk modules")
     parser.add_argument("--su", action="store_true", help="Starts Magisk SU inside waydroid.")
+    parser.add_argument("--stable", nargs='?', type=str, help="Magisk Delta Stable channel")
+    parser.add_argument("--canary", nargs='?', type=str, help="Magisk Delta Canary channel")
+    parser.add_argument("--debug", nargs='?', type=str, help="Magisk Delta Debug channel")
+    
     args = parser.parse_args()
 
+
+    js = download_json("https://raw.githubusercontent.com/nitanmarcel/waydroid-magisk/main/magisk.json")
+    magisk_url = js["canary"]
+    magisk_url = js["canary" if args.canary else "debug" if args.debug else "canary"] # stable is disabled for now
     if args.version:
         print(VERSION)
     elif args.install:
         if args.install == "tmpdir":
-            install(arch, bits)
+            install(arch, bits, magisk_url)
         else:
-            install(arch, bits, args.install)   
+            install(arch, bits, magisk_url, workdir=args.install)
     elif args.remove:
         uninstall()
     elif args.update:
-        update(arch, bits)
+        update(arch, bits, magisk_url)
     elif args.install_module:
         install_module(args.install_module)
     elif args.remove_module:
