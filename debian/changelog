@@ -1,3 +1,14 @@
+waydroid-magisk (1.2.0) bullseye; urgency=medium
+
+  * waydroid_magisk: add magisk management api
+  * waydroid_magisk: add help on subcommands with no arguments
+  * waydroid_magisk: improve missing package errors
+  * waydroid_magisk: improve some help strings
+  * docs: document new api
+  * waydroid_magisk: version 1.2.0
+
+ -- Marcel Alexandru Nitan <nitan.marcel@protonmail.com>  Thu, 19 Jan 2023 22:23:09 +0200
+
 waydroid-magisk (1.1.2) bullseye; urgency=medium
   * waydroid_magisk: fix waydroid data location
   * waydroid_magisk: module list requires root
