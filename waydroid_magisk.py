@@ -405,7 +405,7 @@ def uninstall(restart_after=True):
     logging.info("Done")
     return True
 
-def update(arch, bits, magisk_url, workdir=None):
+def update(arch, bits, magisk_url, restart_after=False, workdir=None):
     uninstalled = uninstall(restart_after=False)
     if uninstalled:
         installed = install(arch, bits, magisk_url=magisk_url, workdir=workdir)
