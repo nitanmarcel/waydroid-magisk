@@ -45,7 +45,7 @@ Magisk Delta manager for Waydroid.
   * Ubuntu Touch requires setting an working directory in `/home/phablet`
     * `sudo waydroid_magisk install --tmpdir /home/phablet/magisk_waydroid`
 4. enable ota survival service
-  * For systemd `sudo systemctl enable waydroid_magisk_ota.service && sudo systemctl start waydroid_magisk_ota.service`
+  * For systemd `sudo systemctl enable --now waydroid_magisk_ota.service`
   * For upstart `sudo start waydroid_magisk_ota.service`
 5. **To avoid any issues it's important to read [FAQ](#faq) before using Magisk Delta on waydroid.**
 
