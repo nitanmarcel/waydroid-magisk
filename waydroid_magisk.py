@@ -669,44 +669,50 @@ def main():
     elif args.command == "module":
         if args.command_module == "install":
             install_module(args.MODULE)
-        if args.command_module == "remove":
+        elif args.command_module == "remove":
             remove_module(args.MODULE)
-        if args.command_module == "list":
+        elif args.command_module == "list":
             list_modules()
+        else:
+            parser_modules.print_help()
     elif args.command == "su":
         if args.command_su == "shell":
             su()
-        if args.command_su == "list":
+        elif args.command_su == "list":
             result = magisk_sqlite("SELECT * FROM policies")
             for line in result.splitlines():
                 logging, notification, policy, uid, until = line.split("|")
                 pkg, uid = get_package(int(uid.split("=")[-1]))
                 if pkg:
                     print("- %s | %s" % (pkg, "allowed" if int(policy.split("=")[-1]) == 2 else "denied"))
-        if args.command_su == "allow" or args.command_su == "deny":
+        elif args.command_su == "allow" or args.command_su == "deny":
             policy = "2" if args.command_su == "allow" else "1"
             pkg, app_id = get_package(args.PKG)
             if not app_id:
                 logging.error("Package %s not installed" % args.PKG)
                 return
             magisk_sqlite("REPLACE INTO policies VALUES(%s,%s,0,1,1)" % (app_id, policy))
+        else:
+            parser_su.print_help()
     elif args.command == "magiskhide":
         cmd = ["magiskhide"]
         if args.command_magiskhide == "status":
             cmd.append("status")
-        if args.command_magiskhide == "sulist":
+        elif args.command_magiskhide == "sulist":
             cmd.append("sulist")
-        if args.command_magiskhide == "enable":
+        elif args.command_magiskhide == "enable":
             cmd.append("enable")
-        if args.command_magiskhide == "disable":
+        elif args.command_magiskhide == "disable":
             cmd.append("disable")
-        if args.command_magiskhide == "add":
+        elif args.command_magiskhide == "add":
             cmd.extend(["add", args.PKG])
-        if args.command_magiskhide == "rm":
+        elif args.command_magiskhide == "rm":
             cmd.append("rm")
             cmd.extend(args.PKG)
-        if args.command_magiskhide == "ls":
+        elif args.command_magiskhide == "ls":
             cmd.append("ls")
+        else:
+            print(parser_hide.print_help())
         if len(cmd) > 1:
             magisk_cmd(cmd)
     elif args.command == "zygisk":
@@ -716,10 +722,12 @@ def main():
             if result:
                 state = bool(int(result.split("=")[-1]))
                 logging.info("Zygisk is %s" % ("enabled" if state else "disabled"))
-        if args.command_zygisk == "enable":
+        elif args.command_zygisk == "enable":
             magisk_sqlite("REPLACE INTO settings (key,value) VALUES('zygisk',1)")
-        if args.command_zygisk == "disable":
+        elif args.command_zygisk == "disable":
             magisk_sqlite("REPLACE INTO settings (key,value) VALUES('zygisk',0)")
+        else:
+            parser_zygisk.print_help()
     elif args.ota:
         ota()
     elif args.version:
