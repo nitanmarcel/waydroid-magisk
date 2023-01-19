@@ -492,6 +492,10 @@ def install_module(modpath):
     restart_session_if_needed()
 
 def list_modules():
+    is_root = check_root()
+    if not is_root:
+        logging.error("This command needs to be ran as a priviliged user!")
+        return
     if not is_running():
         logging.error("Waydroid session is not running")
         return
