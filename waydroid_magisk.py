@@ -456,6 +456,10 @@ def ota():
         time.sleep(1)
 
 def magisk_cmd(args):
+    is_root = check_root()
+    if not is_root:
+        logging.error("This command needs to be ran as a priviliged user!")
+        return
     if not is_running():
         logging.error("Waydroid session is not running")
         return
@@ -469,6 +473,26 @@ def magisk_cmd(args):
         command.extend(args)
         subprocess.run(command, env={"PATH": os.environ['PATH'] + ":/system/bin:/vendor/bin"})
 
+def magisk_sqlite(query):
+    is_root = check_root()
+    if not is_root:
+        logging.error("This command needs to be ran as a priviliged user!")
+        return
+    if not is_running():
+        logging.error("Waydroid session is not running")
+        return
+    if not is_installed():
+        logging.error("Magisk Delta is not installed")
+        return
+    result = ""
+    waydroid_session = get_waydroid_session()
+    with WaydroidFreezeUnfreeze(waydroid_session):
+        lxc = os.path.join(WAYDROID_DIR, "lxc")
+        command = ["lxc-attach", "-P", lxc, "-n", "waydroid", "--", "/sbin/magisk", "--sqlite", query]
+        proc = subprocess.run(command, env={"PATH": os.environ['PATH'] + ":/system/bin:/vendor/bin"}, universal_newlines=False, stdout=subprocess.PIPE, 
+                                stderr=subprocess.DEVNULL)
+        result = proc.stdout.decode()
+    return result
 
 def install_module(modpath):
     is_root = check_root()
@@ -533,7 +557,7 @@ def remove_module(modname):
         logging.info("'%s' Magisk module has been removed" % modname)
         restart_session_if_needed()
 
-def su():
+def su(args=None):
     is_root = check_root()
     if not is_root:
         logging.error("This command needs to be ran as a priviliged user!")
@@ -544,14 +568,32 @@ def su():
     if not is_installed():
         logging.error("Magisk Delta is not installed")
         return
+    result = ""
     waydroid_session = get_waydroid_session()
     with WaydroidFreezeUnfreeze(waydroid_session):
         lxc = os.path.join(WAYDROID_DIR, "lxc")
         command = ["lxc-attach", "-P", lxc, "-n", "waydroid", "--", "su", "-c", "mknod",  "-m", "666", "/dev/tty", "c", "5", "0", "2>", "/dev/null"]
         subprocess.run(command, env={"PATH": os.environ['PATH'] + ":/system/bin:/vendor/bin"})
         command = ["lxc-attach", "-P", lxc, "-n", "waydroid", "--", "su"]
-        subprocess.run(command, env={"PATH": os.environ['PATH'] + ":/system/bin:/vendor/bin"})
+        if args:
+            command.append("-c")
+            command.extend(args)
+        if not args:
+            subprocess.run(command, env={"PATH": os.environ['PATH'] + ":/system/bin:/vendor/bin"})
+        else:
+            proc = subprocess.run(command, env={"PATH": os.environ['PATH'] + ":/system/bin:/vendor/bin"}, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+            result = proc.stdout.decode()
+    return result
 
+def get_package(query):
+    name = ""
+    app_id = 0
+    result = su(["pm", "list", "packages -U", "|", "grep", str(query)])
+    if result:
+        name, app_id = result.split()
+        name = name.split(":")[-1]
+        app_id = int(app_id.split(":")[-1])
+    return (name, app_id)
 
 def main():
     if not is_waydroid_initialized():
@@ -580,7 +622,34 @@ def main():
     parser_modules_remove.add_argument("MODULE", type=str, help="Module name to remove")
     parser_modules_list = parser_modules_subparser.add_parser("list", help="List all installed magisk modules")
 
-    subparsers.add_parser("su", help="Open magisk su shell inside Waydroid")
+    parser_su = subparsers.add_parser("su", help="Open magisk su shell inside Waydroid")
+    parser_su_subparser = parser_su.add_subparsers(dest="command_su")
+    parser_su_subparser.add_parser("shell", help="Opens the magisk su shell")
+    parser_su_subparser.add_parser("list", help="Return apps status in su database")
+    parser_su_allow = parser_su_subparser.add_parser("allow", help="Allow su access to app")
+    parser_su_allow.add_argument("PKG", type=str, help="PKG")
+    parser_su_deny = parser_su_subparser.add_parser("deny", help="Deny su access to app")
+    parser_su_deny.add_argument("PKG", type=str, help="PKG")
+
+
+    parser_hide = subparsers.add_parser("magiskhide", help="Execute magisk hide commands")
+    parser_hide_subparser = parser_hide.add_subparsers(dest="command_magiskhide")
+    parser_hide_subparser.add_parser("status", help="Return the MagiskHide status")
+    parser_hide_subparser.add_parser("sulist", help="Return the SuList status")
+    parser_hide_subparser.add_parser("enable", help="Enable MagiskHide")
+    parser_hide_subparser.add_parser("disable", help="Disable MagiskHide")   
+    parser_hide_add = parser_hide_subparser.add_parser("add", help="Add a new target to the hidelist (sulist)")
+    parser_hide_add.add_argument("PKG", type=str, help="PKG [PROC]")
+    parser_hide_remove = parser_hide_subparser.add_parser("rm", help="Remove target(s) from the hidelist (sulist)")
+    parser_hide_remove.add_argument("PKG", nargs="+", type=str, help="PKG [PROC]")
+    parser_hide_ls = parser_hide_subparser.add_parser("ls", help="Print the current hidelist (sulist)")
+
+
+    parser_zygisk = subparsers.add_parser("zygisk", help="Execute zygisk commands")
+    parser_zygisk_subparser = parser_zygisk.add_subparsers(dest="command_zygisk")
+    parser_zygisk_subparser.add_parser("status", help="Return the zygisk status")
+    parser_zygisk_subparser.add_parser("enable", help="Enable zygisk (requires waydroid restart)")
+    parser_zygisk_subparser.add_parser("disable", help="Disable zygisk (requires waydroid restart)")
 
     args = parser.parse_args()
 
@@ -605,7 +674,52 @@ def main():
         if args.command_module == "list":
             list_modules()
     elif args.command == "su":
-        su()
+        if args.command_su == "shell":
+            su()
+        if args.command_su == "list":
+            result = magisk_sqlite("SELECT * FROM policies")
+            for line in result.splitlines():
+                logging, notification, policy, uid, until = line.split("|")
+                pkg, uid = get_package(int(uid.split("=")[-1]))
+                if pkg:
+                    print("- %s | %s" % (pkg, "allowed" if int(policy.split("=")[-1]) == 2 else "denied"))
+        if args.command_su == "allow" or args.command_su == "deny":
+            policy = "2" if args.command_su == "allow" else "1"
+            pkg, app_id = get_package(args.PKG)
+            if not app_id:
+                logging.error("Package %s not installed" % args.PKG)
+                return
+            magisk_sqlite("REPLACE INTO policies VALUES(%s,%s,0,1,1)" % (app_id, policy))
+    elif args.command == "magiskhide":
+        cmd = ["magiskhide"]
+        if args.command_magiskhide == "status":
+            cmd.append("status")
+        if args.command_magiskhide == "sulist":
+            cmd.append("sulist")
+        if args.command_magiskhide == "enable":
+            cmd.append("enable")
+        if args.command_magiskhide == "disable":
+            cmd.append("disable")
+        if args.command_magiskhide == "add":
+            cmd.extend(["add", args.PKG])
+        if args.command_magiskhide == "rm":
+            cmd.append("rm")
+            cmd.extend(args.PKG)
+        if args.command_magiskhide == "ls":
+            cmd.append("ls")
+        if len(cmd) > 1:
+            magisk_cmd(cmd)
+    elif args.command == "zygisk":
+        if args.command_zygisk == "status":
+            result = magisk_sqlite("SELECT value FROM settings WHERE key == 'zygisk'")
+            state = False
+            if result:
+                state = bool(int(result.split("=")[-1]))
+                logging.info("Zygisk is %s" % ("enabled" if state else "disabled"))
+        if args.command_zygisk == "enable":
+            magisk_sqlite("REPLACE INTO settings (key,value) VALUES('zygisk',1)")
+        if args.command_zygisk == "disable":
+            magisk_sqlite("REPLACE INTO settings (key,value) VALUES('zygisk',0)")
     elif args.ota:
         ota()
     elif args.version:
