@@ -18,6 +18,7 @@ import zipfile
 import subprocess
 import configparser
 import json
+import datetime
 
 WITH_DBUS = True
 
@@ -161,6 +162,9 @@ def get_waydroid_session():
             return
 
 def xdg_data_home():
+    waydroid_session = get_waydroid_session()
+    if waydroid_session:
+        return waydroid_session["xdg_data_home"]
     cfg = configparser.ConfigParser()
     cfg.read(os.path.join(WAYDROID_DIR, "session.cfg"))
     return cfg["session"]["xdg_data_home"]
@@ -408,6 +412,52 @@ def update(arch, bits, magisk_url, workdir=None):
         if installed:
             logging.info("Manually update Magisk Manager after booting Waydroid.")
 
+
+def magisk_log(save=False):
+    is_root = check_root()
+    if not is_root:
+        logging.error("This command needs to be ran as a priviliged user!")
+        return
+    if not is_running():
+        logging.error("Waydroid session is not running")
+        return
+    if not is_installed():
+        logging.error("Magisk Delta is not installed")
+        return
+    if not save:
+        su(["tail", "-f", "/cache/magisk.log"], False)
+    else:
+        save_to = os.path.join(xdg_data_home(), "waydroid_magisk", "magisk_log_%s.log" % datetime.datetime.now().strftime("%Y-%m-%d_%H:%M:%S"))
+        if not os.path.isdir(os.path.basename(save_to)):
+            os.makedirs(os.path.basename(save_to))
+        with open(save_to, "w") as out:
+            if os.path.isdir("/sys/fs/selinux"):
+                if len(os.listdir("/sys/fs/selinux")) > 0:
+                    out.write("!!!!!! If you're seeing this you're running with SELinux enabled which shouldn't work on Waydroid !!!!!!\n\n")
+            out.write("---Detected Device Info---\n\n")
+            out.write("isAB=false\n")
+            out.write("isSAR=false\n")
+            out.write("ramdisk=false\n")
+            uname = os.uname()
+            out.write("kernel=%s %s %s %s\n" % (uname.sysname, uname.machine, uname.release, uname.version))
+            proc = subprocess.run(["waydroid", "--version"], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+            out.write("waydroid arch=%s\n" % get_arch()[0])
+            out.write("waydroid version=%s" % proc.stdout.decode())
+
+            out.write("\n\n---System Properties---\n\n")
+            out.write(su(["getprop"]))
+
+            out.write("\n\n---Environment Variables---\n\n")
+            out.write(su(["env"]))
+
+            out.write("\n\n---System MountInfo---\n\n")
+            out.write(su(["cat", "/proc/self/mountinfo"]))
+
+            out.write("\n---Manager Logs---\n")
+            out.write(su("cat", "/cache/magisk.log"))
+            logging.info("Logs saved to: %s" % save_to)
+
+
 def ota():
     # TODO: Clean this mess I wrote a few days ago when I feel like. And maybe try to find a better way to manage this.
     def copy(source):
@@ -566,7 +616,7 @@ def remove_module(modname):
         logging.info("'%s' Magisk module has been removed" % modname)
         restart_session_if_needed()
 
-def su(args=None):
+def su(args=None, pipe=True):
     is_root = check_root()
     if not is_root:
         logging.error("This command needs to be ran as a priviliged user!")
@@ -590,8 +640,9 @@ def su(args=None):
         if not args:
             subprocess.run(command, env={"PATH": os.environ['PATH'] + ":/system/bin:/vendor/bin"})
         else:
-            proc = subprocess.run(command, env={"PATH": os.environ['PATH'] + ":/system/bin:/vendor/bin"}, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
-            result = proc.stdout.decode()
+            proc = subprocess.run(command, env={"PATH": os.environ['PATH'] + ":/system/bin:/vendor/bin"}, stdout=subprocess.PIPE if pipe else None, stderr=subprocess.DEVNULL)
+            if proc.stdout:
+                result = proc.stdout.decode()
     return result
 
 def get_package(query):
@@ -622,6 +673,9 @@ def main():
     parser_install.add_argument("-t", "--tmpdir", nargs="?", type=str, default="tmpdir", help="Custom path to use as an temporary  directory")
 
     subparsers.add_parser("remove", help="Remove Magisk Delta from Waydroid")
+
+    parser_log = subparsers.add_parser("log", help="Follow magisk log.")
+    parser_log.add_argument("-s", "--save", action="store_true", help="Save magisk log locally")
 
     parser_modules = subparsers.add_parser("module", help="Manage modules in Magisk Delta")
     parser_modules_subparser = parser_modules.add_subparsers(dest="command_module")
@@ -675,6 +729,8 @@ def main():
             install_fnc(arch, bits, magisk_url=magisk_url, workdir=args.tmpdir, restart_after=True)
     elif args.command == "remove":
         uninstall(restart_after=True)
+    elif args.command == "log":
+        magisk_log(save=args.save)
     elif args.command == "module":
         if args.command_module == "install":
             install_module(args.MODULE)
