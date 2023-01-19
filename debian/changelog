@@ -1,3 +1,8 @@
+waydroid-magisk (1.1.2) bullseye; urgency=medium
+  * waydroid_magisk: fix waydroid data location
+  * waydroid_magisk: module list requires root
+
+ -- Marcel Alexandru Nitan <nitan.marcel@protonmail.com>  Wed, 19 Jan 2023 15:13:01 +0200
 
 waydroid-magisk (1.1.2) bullseye; urgency=medium
   * waydroid_magisk: fix for installation without dbus
