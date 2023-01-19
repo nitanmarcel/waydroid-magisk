@@ -457,6 +457,8 @@ def ota():
 
 def magisk_cmd(args):
     is_root = check_root()
+    status = 0
+    result = ""
     if not is_root:
         logging.error("This command needs to be ran as a priviliged user!")
         return
@@ -471,7 +473,14 @@ def magisk_cmd(args):
         lxc = os.path.join(WAYDROID_DIR, "lxc")
         command = ["lxc-attach", "-P", lxc, "-n", "waydroid", "--", "/sbin/magisk"]
         command.extend(args)
-        subprocess.run(command, env={"PATH": os.environ['PATH'] + ":/system/bin:/vendor/bin"})
+        proc = subprocess.run(command, env={"PATH": os.environ['PATH'] + ":/system/bin:/vendor/bin"}, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
+        if proc.stdout:
+            status = 0
+            result = proc.stdout.decode()
+        elif proc.stderr:
+            status = 1
+            result = proc.stderr.decode()
+    return (status, result)
 
 def magisk_sqlite(query):
     is_root = check_root()
@@ -681,7 +690,7 @@ def main():
         elif args.command_su == "list":
             result = magisk_sqlite("SELECT * FROM policies")
             for line in result.splitlines():
-                logging, notification, policy, uid, until = line.split("|")
+                _logging, notification, policy, uid, until = line.split("|")
                 pkg, uid = get_package(int(uid.split("=")[-1]))
                 if pkg:
                     print("- %s | %s" % (pkg, "allowed" if int(policy.split("=")[-1]) == 2 else "denied"))
@@ -689,7 +698,7 @@ def main():
             policy = "2" if args.command_su == "allow" else "1"
             pkg, app_id = get_package(args.PKG)
             if not app_id:
-                logging.error("Package %s not installed" % args.PKG)
+                logging.error("Invalid package name")
                 return
             magisk_sqlite("REPLACE INTO policies VALUES(%s,%s,0,1,1)" % (app_id, policy))
         else:
@@ -714,7 +723,9 @@ def main():
         else:
             print(parser_hide.print_help())
         if len(cmd) > 1:
-            magisk_cmd(cmd)
+            status, message = magisk_cmd(cmd)
+            if status == 1:
+                logging.error(message)
     elif args.command == "zygisk":
         if args.command_zygisk == "status":
             result = magisk_sqlite("SELECT value FROM settings WHERE key == 'zygisk'")
