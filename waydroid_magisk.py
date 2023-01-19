@@ -610,7 +610,7 @@ def main():
         return
     arch, bits = get_arch()
 
-    parser = argparse.ArgumentParser(description="Magisk Delta installer and manager for Waydroid")
+    parser = argparse.ArgumentParser(description="Magisk Delta installer and manager for Waydroid", prog="waydroid_magisk")
     parser.add_argument("-v", "--version", action="store_true", help="Print version")
     parser.add_argument("-o", "--ota", action="store_true", help="Handles survival during Waydroid updates (overlay only)")
 
@@ -631,7 +631,7 @@ def main():
     parser_modules_remove.add_argument("MODULE", type=str, help="Module name to remove")
     parser_modules_list = parser_modules_subparser.add_parser("list", help="List all installed magisk modules")
 
-    parser_su = subparsers.add_parser("su", help="Open magisk su shell inside Waydroid")
+    parser_su = subparsers.add_parser("su", help="Manage su in Magisk Delta")
     parser_su_subparser = parser_su.add_subparsers(dest="command_su")
     parser_su_subparser.add_parser("shell", help="Opens the magisk su shell")
     parser_su_subparser.add_parser("list", help="Return apps status in su database")
