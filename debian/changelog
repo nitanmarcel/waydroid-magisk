@@ -1,3 +1,11 @@
+waydroid-magisk (1.2.1) bullseye; urgency=medium
+
+  * doc: systemctl enable --now does the same as enable and start
+  * waydroid_magisk: add log command to follow and locally save magisk logs
+  * waydroid_magisk: version 1.2.1
+
+ -- Marcel Alexandru Nitan <nitan.marcel@protonmail.com>  Fri, 20 Jan 2023 00:33:44 +0200
+
 waydroid-magisk (1.2.0) bullseye; urgency=medium
 
   * waydroid_magisk: add magisk management api
