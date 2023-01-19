@@ -160,6 +160,12 @@ def get_waydroid_session():
         except dbus.exceptions.DBusException:
             return
 
+def xdg_data_home():
+    cfg = configparser.ConfigParser()
+    cfg.read(os.path.join(WAYDROID_DIR, "session.cfg"))
+    return cfg["session"]["xdg_data_home"]
+
+
 def is_running():
     return len(os.listdir(os.path.join(WAYDROID_DIR, "rootfs"))) > 0
 
@@ -457,9 +463,6 @@ def magisk_cmd(args):
         logging.error("Magisk Delta is not installed")
         return
     waydroid_session = get_waydroid_session()
-    if waydroid_session["state"] not in ["RUNNING", "FROZEN"]:
-        logging.error("Waydroid state is %s" % waydroid_session["state"])
-        return
     with WaydroidFreezeUnfreeze(waydroid_session):
         lxc = os.path.join(WAYDROID_DIR, "lxc")
         command = ["lxc-attach", "-P", lxc, "-n", "waydroid", "--", "/sbin/magisk"]
@@ -479,10 +482,7 @@ def install_module(modpath):
         logging.error("Magisk Delta is not installed")
         return
     waydroid_session = get_waydroid_session()
-    if waydroid_session["state"] not in ["RUNNING", "FROZEN"]:
-        logging.error("Waydroid state is %s" % waydroid_session["state"])
-        return
-    tmpdir = os.path.join(waydroid_session["waydroid_data"], "waydroid_tmp")
+    tmpdir = os.path.join(xdg_data_home(), "waydroid_tmp")
     if not os.path.exists(tmpdir):
         os.makedirs(tmpdir)
     shutil.copyfile(modpath, os.path.join(tmpdir, "module.zip"))
@@ -499,11 +499,8 @@ def list_modules():
         logging.error("Magisk Delta is not installed")
         return
     waydroid_session = get_waydroid_session()
-    if waydroid_session["state"] not in ["RUNNING", "FROZEN"]:
-        logging.error("Waydroid status is %s" % waydroid_session["state"])
-        return
     with WaydroidFreezeUnfreeze(waydroid_session):
-        modpath = os.path.join(waydroid_session["waydroid_data"], "adb", "modules")
+        modpath = os.path.join(xdg_data_home(), "adb", "modules")
         if not os.path.isdir(modpath):
             logging.error("No Magisk modules are currently installed")
             return
@@ -522,10 +519,7 @@ def remove_module(modname):
         return
     waydroid_session = get_waydroid_session()
     with WaydroidFreezeUnfreeze(waydroid_session):
-        if waydroid_session["state"] not in ["RUNNING", "FROZEN"]:
-            logging.error("Waydroid status is %s" % waydroid_session["state"])
-            return
-        modpath = os.path.join(waydroid_session["waydroid_data"], "adb", "modules")    
+        modpath = os.path.join(xdg_data_home(), "adb", "modules")    
         if not os.path.isdir(os.path.join(modpath, modname)):
             logging.error("'%s' is not an installed Magisk module" % modname)
             return
@@ -548,9 +542,6 @@ def su():
         return
     waydroid_session = get_waydroid_session()
     with WaydroidFreezeUnfreeze(waydroid_session):
-        if waydroid_session["state"] not in ["RUNNING", "FROZEN"]:
-            logging.error("Waydroid status is %s" % waydroid_session["state"])
-            return
         lxc = os.path.join(WAYDROID_DIR, "lxc")
         command = ["lxc-attach", "-P", lxc, "-n", "waydroid", "--", "su", "-c", "mknod",  "-m", "666", "/dev/tty", "c", "5", "0", "2>", "/dev/null"]
         subprocess.run(command, env={"PATH": os.environ['PATH'] + ":/system/bin:/vendor/bin"})
