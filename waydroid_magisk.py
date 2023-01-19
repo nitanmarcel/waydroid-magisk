@@ -482,7 +482,7 @@ def install_module(modpath):
         logging.error("Magisk Delta is not installed")
         return
     waydroid_session = get_waydroid_session()
-    tmpdir = os.path.join(xdg_data_home(), "waydroid_tmp")
+    tmpdir = os.path.join(xdg_data_home(), "waydroid", "data", "waydroid_tmp")
     if not os.path.exists(tmpdir):
         os.makedirs(tmpdir)
     shutil.copyfile(modpath, os.path.join(tmpdir, "module.zip"))
@@ -500,7 +500,7 @@ def list_modules():
         return
     waydroid_session = get_waydroid_session()
     with WaydroidFreezeUnfreeze(waydroid_session):
-        modpath = os.path.join(xdg_data_home(), "adb", "modules")
+        modpath = os.path.join(xdg_data_home(), "waydroid", "data", "adb", "modules")
         if not os.path.isdir(modpath):
             logging.error("No Magisk modules are currently installed")
             return
@@ -519,7 +519,7 @@ def remove_module(modname):
         return
     waydroid_session = get_waydroid_session()
     with WaydroidFreezeUnfreeze(waydroid_session):
-        modpath = os.path.join(xdg_data_home(), "adb", "modules")    
+        modpath = os.path.join(xdg_data_home(), "waydroid", "data", "adb", "modules")    
         if not os.path.isdir(os.path.join(modpath, modname)):
             logging.error("'%s' is not an installed Magisk module" % modname)
             return
