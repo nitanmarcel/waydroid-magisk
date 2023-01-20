@@ -677,12 +677,12 @@ def install_module(modpath):
         logging.error("Magisk Delta is not installed")
         return
     waydroid_session = get_waydroid_session()
-    tmpdir = os.path.join(xdg_data_home(), "waydroid", "data", "waydroid_tmp")
+    tmpdir = os.path.join(xdg_data_home(), "waydroid", "data", "adb", "magisk_tmp")
     if not os.path.exists(tmpdir):
         os.makedirs(tmpdir)
     shutil.copyfile(modpath, os.path.join(tmpdir, "module.zip"))
     args = ["--install-module",
-            os.path.join("/data", "waydroid_tmp", "module.zip")]
+            os.path.join("/data", "adb", "magisk_tmp", "module.zip")]
     magisk_cmd(args, pipe=False)
     os.remove(os.path.join(tmpdir, "module.zip"))
     restart_session_if_needed()
