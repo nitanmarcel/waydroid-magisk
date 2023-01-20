@@ -19,6 +19,7 @@ import subprocess
 import configparser
 import json
 import datetime
+import hashlib
 
 WITH_DBUS = True
 
@@ -132,6 +133,9 @@ def get_arch():
 
 def is_waydroid_initialized():
     return os.path.exists(CONFIG_FILE)
+
+def is_waydroid_data_ready():
+    return len(os.listdir(os.path.join(xdg_data_home(), "waydroid", "data")) > 0)
 
 def is_installed():
     overlay_magisk = os.path.join(WAYDROID_DIR, "overlay/system/etc/init/magisk")
@@ -259,6 +263,11 @@ def install(arch, bits, magisk_url, workdir=None, restart_after=True):
                 MAGISK_OVERLAY, re.match("lib(.*)\.so", lib).group(1)))
             os.chmod(os.path.join(MAGISK_OVERLAY, re.match(
                 "lib(.*)\.so", lib).group(1)), 0o775)
+        assets = os.path.join(tempdir, "assets")
+        extra_copy = ["util_functions.sh", "addon.d.sh", "boot_patch.sh"]
+        for extra in extra_copy:
+            shutil.copyfile(os.path.join(assets, extra), os.path.join(MAGISK_OVERLAY, extra))
+        shutil.copyfile(os.path.join(tempdir, "magisk-delta.apk"), os.path.join(MAGISK_OVERLAY, "magisk.apk"))
 
         logging.info("Creating bootanim.rc")
         with open(os.path.join(INIT_OVERLAY, "bootanim.rc"), "w+") as handle:
@@ -338,6 +347,24 @@ def install(arch, bits, magisk_url, workdir=None, restart_after=True):
         logging.info("Done")
         return True
 
+def setup():
+    is_root = check_root()
+    if not is_root:
+        logging.error("This command needs to be ran as a priviliged user!")
+        return
+    if not is_running():
+        logging.error("Waydroid session is not running")
+        return
+    if not is_installed():
+        logging.error("Magisk Delta is not installed")
+        return
+    su(["rm", "-rf", "/data/adb/magisk"])
+    su(["mkdir", "-p", "/data/adb/magisk"])
+    su(["chmod", "700", "/data/adb"])
+    su(["cp", "/system/etc/init/magisk/*", "/data/adb/magisk"])
+    su(["chmod", "-R", "755", "/data/adb/magisk/"])
+    su(["chown", "-R", "0:0", "/data/adb/magisk"])
+    restart_session_if_needed()
 
 def uninstall(restart_after=True):
     is_root = check_root()
@@ -356,42 +383,42 @@ def uninstall(restart_after=True):
             logging.error("Failed to mount rootfs. Make sure Waydroid is stopped during the installation.")
             return
     logging.info("Removing Magisk Delta")
-    shutil.copyfile(os.path.join(INIT_OVERLAY, "bootanim.rc.gz"), os.path.join(WAYDROID_DIR, "bootanim.rc.gz"))
+    shutil.copyfile(os.path.join(INIT_OVERLAY, "bootanim.rc.gz"), os.path.join(INIT_OVERLAY, "bootanim.rc.gz"))
     for file in MAGISK_FILES:
         if os.path.exists(file):
             if os.path.isdir(file):
-                os.rmdir(file)
+                shutil.rmtree(file)
             else:
                 os.remove(file)
         file = re.sub("overlay_rw\/system\/", "overlay/", file)
         if os.path.exists(file):
             if os.path.isdir(file):
-                os.rmdir(file)
+                shutil.rmtree(file)
             else:
                 os.remove(file)
 
     if os.path.exists(MAGISK_OVERLAY):
         if os.path.isdir(MAGISK_OVERLAY):
-            os.rmdir(MAGISK_OVERLAY)
+            shutil.rmtree(MAGISK_OVERLAY)
         else:
             os.remove(MAGISK_OVERLAY)
 
     if os.path.exists(MAGISK_OVERLAY_RW):
         if os.path.isdir(MAGISK_OVERLAY_RW):
-            os.rmdir(MAGISK_OVERLAY_RW)
+            shutil.rmtree(MAGISK_OVERLAY_RW)
         else:
             os.remove(MAGISK_OVERLAY_RW)
 
     if has_overlay():
         if os.path.exists(os.path.join(OVERLAY, "sbin")):
             if os.path.isdir(os.path.join(OVERLAY, "sbin")):
-                os.rmdir(os.path.join(OVERLAY, "sbin"))
+                shutil.rmtree(os.path.join(OVERLAY, "sbin"))
             else:
                 os.remove(os.path.join(OVERLAY, "sbin"))
 
         if os.path.exists(os.path.join(OVERLAY, "system/addon.d")):
             if os.path.isdir(os.path.join(OVERLAY, "system/addon.d")):
-                os.rmdir(os.path.join(OVERLAY, "system/addon.d"))
+                shutil.rmtree(os.path.join(OVERLAY, "system/addon.d"))
             else:
                 os.remove(os.path.join(OVERLAY, "system/addon.d"))
     if not has_overlay():
@@ -484,7 +511,7 @@ def ota():
                 os.remove(dest)
         os.remove(source)
         if os.path.isdir(os.path.join(OVERLAY, "sbin")):
-            os.rmdir(os.path.join(OVERLAY, "sbin"))
+            shutil.rmtree(os.path.join(OVERLAY, "sbin"))
     
     if not has_overlay():
         raise ValueError("OTA survival not supported on non overlay Waydroid")
@@ -505,7 +532,8 @@ def ota():
                         copy(mfile)
         time.sleep(1)
 
-def magisk_cmd(args):
+def magisk_cmd(args, pipe=True):
+    pipe = subprocess.PIPE if pipe else None
     is_root = check_root()
     status = 0
     result = ""
@@ -523,7 +551,7 @@ def magisk_cmd(args):
         lxc = os.path.join(WAYDROID_DIR, "lxc")
         command = ["lxc-attach", "-P", lxc, "-n", "waydroid", "--", "/sbin/magisk"]
         command.extend(args)
-        proc = subprocess.run(command, env={"PATH": os.environ['PATH'] + ":/system/bin:/vendor/bin"}, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
+        proc = subprocess.run(command, env={"PATH": os.environ['PATH'] + ":/system/bin:/vendor/bin"}, stderr=pipe, stdout=pipe)
         if proc.stdout:
             status = 0
             result = proc.stdout.decode()
@@ -570,7 +598,7 @@ def install_module(modpath):
         os.makedirs(tmpdir)
     shutil.copyfile(modpath, os.path.join(tmpdir, "module.zip"))
     args = ["--install-module", os.path.join("/data", "waydroid_tmp", "module.zip")]
-    magisk_cmd(args)
+    magisk_cmd(args, pipe=False)
     os.remove(os.path.join(tmpdir, "module.zip"))
     restart_session_if_needed()
 
@@ -672,6 +700,8 @@ def main():
     parser_install.add_argument("-d","--debug", action="store_true", help="Install Magisk Delta debug channel (default canary)")
     parser_install.add_argument("-t", "--tmpdir", nargs="?", type=str, default="tmpdir", help="Custom path to use as an temporary  directory")
 
+    subparsers.add_parser("setup", help="Setup magisk env")
+
     subparsers.add_parser("remove", help="Remove Magisk Delta from Waydroid")
 
     parser_log = subparsers.add_parser("log", help="Follow magisk log.")
@@ -727,6 +757,8 @@ def main():
             install_fnc(arch, bits, magisk_url, restart_after=True)
         else:
             install_fnc(arch, bits, magisk_url=magisk_url, workdir=args.tmpdir, restart_after=True)
+    elif args.command == "setup":
+        setup()
     elif args.command == "remove":
         uninstall(restart_after=True)
     elif args.command == "log":
