@@ -384,6 +384,28 @@ def setup():
     su(["chown", "-R", "0:0", "/data/adb/magisk"])
     restart_session_if_needed()
 
+
+def magisk_status():
+    is_root = check_root()
+    if not is_root:
+        logging.error("This command needs to be ran as a priviliged user!")
+        return
+    if not is_running():
+        logging.error("Waydroid session is not running")
+        return
+    if not is_installed():
+        logging.error("Magisk Delta is not installed")
+        return
+    daemon_running = bool(su(["pidof", "magiskd"]))
+    logging.info("Daemon: %s" % ("Running" if daemon_running else "Stopped"))
+    if not daemon_running:
+        with open("/var/log/syslog", "r") as dmesg:
+            error = "Abort message: 'stack corruption detected (-fstack-protector)'"
+            if dmesg.read().find(error) > -1:
+                logging.error(error)
+    logging.info("Magisk Version: %s" % su(["magisk", "su", "--version"]))
+
+
 def uninstall(restart_after=True):
     is_root = check_root()
     if not is_root:
@@ -712,6 +734,7 @@ def main():
     parser.add_argument("-o", "--ota", action="store_true", help="Handles survival during Waydroid updates (overlay only)")
 
     subparsers = parser.add_subparsers(dest="command")
+    subparsers.add_parser("status", help="Query Magisk status")
     parser_install = subparsers.add_parser("install", help="Install Magisk Delta in Waydroid")
     parser_install.add_argument("-u", "--update", action="store_true", help="Update Magisk Delta")
     parser_install.add_argument("-c","--canary", action="store_true", help="Install Magisk Delta canary channel (default canary)")
@@ -764,7 +787,9 @@ def main():
 
     args = parser.parse_args()
 
-    if args.command == "install":
+    if args.command == "status":
+        magisk_status()
+    elif args.command == "install":
         magisk_channels = download_json("https://raw.githubusercontent.com/nitanmarcel/waydroid-magisk/main/magisk.json")
         magisk_url = magisk_channels["canary"]
         magisk_url = magisk_channels["canary" if args.canary else "debug" if args.debug else "canary"] # stable is disabled for now
