@@ -1,3 +1,12 @@
+waydroid-magisk (1.2.3) bullseye; urgency=medium
+
+  * waydroid_magisk: run autopep8 to clean the code
+  * waydroid_magisk: ramdisk is always true in waydroid
+  * waydroid_magisk: create our own tmp dir in data. to avoid breaking waydroid app install
+  * waydroid_magisk: version 1.2.3
+
+ -- Marcel Alexandru Nitan <nitan.marcel@protonmail.com>  Fri, 20 Jan 2023 21:30:18 +0200
+
 waydroid-magisk (1.2.2) bullseye; urgency=medium
 
   * waydroid_magisk: fix update
