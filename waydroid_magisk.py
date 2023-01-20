@@ -540,7 +540,7 @@ def magisk_log(save=False):
             out.write("---Detected Device Info---\n\n")
             out.write("isAB=false\n")
             out.write("isSAR=false\n")
-            out.write("ramdisk=false\n")
+            out.write("ramdisk=true\n")
             uname = os.uname()
             out.write("kernel=%s %s %s %s\n" % (uname.sysname,
                       uname.machine, uname.release, uname.version))
