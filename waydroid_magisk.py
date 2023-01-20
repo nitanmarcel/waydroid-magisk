@@ -184,12 +184,30 @@ def stop_session_if_needed():
         WaydroidContainerDbus().Stop(True)
 
 def restart_session_if_needed():
+    try:
+        _restart_session_if_needed()
+    except KeyboardInterrupt:
+        logging.info("Canceled")
+
+def _restart_session_if_needed():
     waydroid_session = get_waydroid_session()
+    seconds = 5
     if waydroid_session:
+        for i in range(0, seconds):
+            print("Restarting Waydroid in %s (press ^C to cancel)" % (seconds - i))
+            time.sleep(1)
         logging.info("Stopping Waydroid")
         WaydroidContainerDbus().Stop(False)
         logging.info("Starting Waydroid")
         WaydroidContainerDbus().Start(waydroid_session)
+    elif is_running():
+        for i in range(0, seconds):
+            print("Stopping Waydroid in %s (press ^C to cancel)" % (seconds - i))
+            time.sleep(1)
+        lxc = os.path.join(WAYDROID_DIR, "lxc")
+        command = ["lxc-attach", "-P", lxc, "-n", "waydroid", "--", "/system/bin/sh", "reboot"]
+        logging.info("Stopping Waydroid")
+        logging.info("Manually start Waydroid again.")
 
 
 class WaydroidFreezeUnfreeze:
