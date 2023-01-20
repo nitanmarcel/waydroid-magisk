@@ -134,11 +134,14 @@ def get_arch():
 def is_waydroid_initialized():
     return os.path.exists(CONFIG_FILE)
 
+
 def is_waydroid_data_ready():
     return len(os.listdir(os.path.join(xdg_data_home(), "waydroid", "data")) > 0)
 
+
 def is_installed():
-    overlay_magisk = os.path.join(WAYDROID_DIR, "overlay/system/etc/init/magisk")
+    overlay_magisk = os.path.join(
+        WAYDROID_DIR, "overlay/system/etc/init/magisk")
     rootfs_magisk = os.path.join(WAYDROID_DIR, "rootfs/system/etc/init/magisk")
     installed = os.path.exists(overlay_magisk)
     if not has_overlay():
@@ -158,12 +161,14 @@ def WaydroidContainerDbus():
 def WaydroidSessionDbus():
     return dbus.Interface(dbus.SystemBus().get_object("id.waydro.Session", "/SessionManager"), "id.waydro.SessionManager")
 
+
 def get_waydroid_session():
     if WITH_DBUS:
         try:
             return WaydroidContainerDbus().GetSession()
         except dbus.exceptions.DBusException:
             return
+
 
 def xdg_data_home():
     waydroid_session = get_waydroid_session()
@@ -177,11 +182,13 @@ def xdg_data_home():
 def is_running():
     return len(os.listdir(os.path.join(WAYDROID_DIR, "rootfs"))) > 0
 
+
 def stop_session_if_needed():
     waydroid_session = get_waydroid_session()
     if waydroid_session:
         logging.info("Stopping Waydroid")
         WaydroidContainerDbus().Stop(True)
+
 
 def restart_session_if_needed():
     try:
@@ -189,12 +196,14 @@ def restart_session_if_needed():
     except KeyboardInterrupt:
         logging.info("Canceled")
 
+
 def _restart_session_if_needed():
     waydroid_session = get_waydroid_session()
     seconds = 5
     if waydroid_session:
         for i in range(0, seconds):
-            print("Restarting Waydroid in %s (press ^C to cancel)" % (seconds - i))
+            print("Restarting Waydroid in %s (press ^C to cancel)" %
+                  (seconds - i))
             time.sleep(1)
         logging.info("Stopping Waydroid")
         WaydroidContainerDbus().Stop(False)
@@ -205,7 +214,8 @@ def _restart_session_if_needed():
             print("Stopping Waydroid in %s (press ^C to cancel)" % (seconds - i))
             time.sleep(1)
         lxc = os.path.join(WAYDROID_DIR, "lxc")
-        command = ["lxc-attach", "-P", lxc, "-n", "waydroid", "--", "/system/bin/sh", "reboot"]
+        command = ["lxc-attach", "-P", lxc, "-n",
+                   "waydroid", "--", "/system/bin/sh", "reboot"]
         logging.info("Stopping Waydroid")
         logging.info("Manually start Waydroid again.")
 
@@ -213,12 +223,15 @@ def _restart_session_if_needed():
 class WaydroidFreezeUnfreeze:
     def __init__(self, session) -> None:
         self._session = session
+
     def __enter__(self):
         if self._frozen:
             WaydroidContainerDbus().Unfreeze()
+
     def __exit__(self, exc_type, exc_value, traceback):
         if self._frozen:
             WaydroidContainerDbus().Freeze()
+
     @property
     def _frozen(self):
         if self._session:
@@ -226,26 +239,33 @@ class WaydroidFreezeUnfreeze:
         else:
             return False
 
+
 def mount_system():
     if not os.path.exists(OVERLAY):
         os.mkdir(OVERLAY)
     rootfs = get_systemimg_path()
     if len(os.listdir(os.path.join(WAYDROID_DIR, "rootfs"))) > 0:
         return False
-    subprocess.run(["e2fsck", "-y", "-f", rootfs], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-    subprocess.run(["resize2fs", rootfs, "2G"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-    subprocess.run(["mount", "-o", "rw,loop", rootfs, OVERLAY], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    subprocess.run(["e2fsck", "-y", "-f", rootfs],
+                   stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    subprocess.run(["resize2fs", rootfs, "2G"],
+                   stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    subprocess.run(["mount", "-o", "rw,loop", rootfs, OVERLAY],
+                   stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     return True
+
 
 def umount_system():
     mounted = os.path.ismount(OVERLAY)
     while mounted:
         try:
-            subprocess.run(["umount", OVERLAY], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            subprocess.run(["umount", OVERLAY],
+                           stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         except subprocess.CalledProcessError as exc:
             pass
         mounted = os.path.ismount(OVERLAY)
         time.sleep(1)
+
 
 def install(arch, bits, magisk_url, workdir=None, restart_after=True):
     is_root = check_root()
@@ -261,7 +281,8 @@ def install(arch, bits, magisk_url, workdir=None, restart_after=True):
             stop_session_if_needed()
         mount = mount_system()
         if not mount:
-            logging.error("Failed to mount rootfs. Make sure Waydroid is stopped during the installation.")
+            logging.error(
+                "Failed to mount rootfs. Make sure Waydroid is stopped during the installation.")
             return
     if workdir:
         if not os.path.exists(workdir):
@@ -284,8 +305,10 @@ def install(arch, bits, magisk_url, workdir=None, restart_after=True):
         assets = os.path.join(tempdir, "assets")
         extra_copy = ["util_functions.sh", "addon.d.sh", "boot_patch.sh"]
         for extra in extra_copy:
-            shutil.copyfile(os.path.join(assets, extra), os.path.join(MAGISK_OVERLAY, extra))
-        shutil.copyfile(os.path.join(tempdir, "magisk-delta.apk"), os.path.join(MAGISK_OVERLAY, "magisk.apk"))
+            shutil.copyfile(os.path.join(assets, extra),
+                            os.path.join(MAGISK_OVERLAY, extra))
+        shutil.copyfile(os.path.join(tempdir, "magisk-delta.apk"),
+                        os.path.join(MAGISK_OVERLAY, "magisk.apk"))
 
         logging.info("Creating bootanim.rc")
         with open(os.path.join(INIT_OVERLAY, "bootanim.rc"), "w+") as handle:
@@ -326,13 +349,15 @@ def install(arch, bits, magisk_url, workdir=None, restart_after=True):
             handle.write("\trm /dev/.magisk_unblock\n")
             handle.write("\n\n")
 
-            handle.write("service %s /sbin/magisk --auto-selinux --post-fs-data\n" % x)
+            handle.write(
+                "service %s /sbin/magisk --auto-selinux --post-fs-data\n" % x)
             handle.write("\tuser root\n")
             handle.write("\tseclabel u:r:su:s0\n")
             handle.write("\toneshot\n")
             handle.write("\n\n")
 
-            handle.write("service %s /sbin/magisk --auto-selinux --service\n" % y)
+            handle.write(
+                "service %s /sbin/magisk --auto-selinux --service\n" % y)
             handle.write("\tclass late_start\n")
             handle.write("\tuser root\n")
             handle.write("\tseclabel u:r:su:s0\n")
@@ -346,11 +371,13 @@ def install(arch, bits, magisk_url, workdir=None, restart_after=True):
             handle.write("\n\n")
 
             handle.write("on property:init.svc.zygote=restarting\n")
-            handle.write("\texec u:r:su:s0 root root -- /sbin/magisk --auto-selinux --zygote-restart")
+            handle.write(
+                "\texec u:r:su:s0 root root -- /sbin/magisk --auto-selinux --zygote-restart")
             handle.write("\n\n")
 
             handle.write("on property:init.svc.zygote=stopped\n")
-            handle.write("\texec u:r:su:s0 root root -- /sbin/magisk --auto-selinux --zygote-restart")
+            handle.write(
+                "\texec u:r:su:s0 root root -- /sbin/magisk --auto-selinux --zygote-restart")
             handle.write("\n")
 
             logging.info("Finishing installation")
@@ -363,8 +390,10 @@ def install(arch, bits, magisk_url, workdir=None, restart_after=True):
         if restart_after:
             restart_session_if_needed()
         logging.info("Done")
-        logging.info("Run waydroid_magisk setup after waydroid starts again or install Magisk Delta Manager")
+        logging.info(
+            "Run waydroid_magisk setup after waydroid starts again or install Magisk Delta Manager")
         return True
+
 
 def setup():
     is_root = check_root()
@@ -421,10 +450,12 @@ def uninstall(restart_after=True):
             stop_session_if_needed()
         mount = mount_system()
         if not mount:
-            logging.error("Failed to mount rootfs. Make sure Waydroid is stopped during the installation.")
+            logging.error(
+                "Failed to mount rootfs. Make sure Waydroid is stopped during the installation.")
             return
     logging.info("Removing Magisk Delta")
-    shutil.copyfile(os.path.join(INIT_OVERLAY, "bootanim.rc.gz"), os.path.join(WAYDROID_DIR, "bootanim.rc.gz"))
+    shutil.copyfile(os.path.join(INIT_OVERLAY, "bootanim.rc.gz"),
+                    os.path.join(WAYDROID_DIR, "bootanim.rc.gz"))
     for file in MAGISK_FILES:
         if os.path.exists(file):
             if os.path.isdir(file):
@@ -473,12 +504,14 @@ def uninstall(restart_after=True):
     logging.info("Done")
     return True
 
+
 def update(arch, bits, magisk_url, restart_after=False, workdir=None):
     uninstalled = uninstall(restart_after=False)
     if uninstalled:
         installed = install(arch, bits, magisk_url=magisk_url, workdir=workdir)
         if installed:
-            logging.info("Manually update Magisk Manager after booting Waydroid.")
+            logging.info(
+                "Manually update Magisk Manager after booting Waydroid.")
 
 
 def magisk_log(save=False):
@@ -495,20 +528,24 @@ def magisk_log(save=False):
     if not save:
         su(["tail", "-f", "/cache/magisk.log"], False)
     else:
-        save_to = os.path.join(xdg_data_home(), "waydroid_magisk", "magisk_log_%s.log" % datetime.datetime.now().strftime("%Y-%m-%d_%H:%M:%S"))
+        save_to = os.path.join(xdg_data_home(), "waydroid_magisk", "magisk_log_%s.log" %
+                               datetime.datetime.now().strftime("%Y-%m-%d_%H:%M:%S"))
         if not os.path.isdir(os.path.basename(save_to)):
             os.makedirs(os.path.basename(save_to))
         with open(save_to, "w") as out:
             if os.path.isdir("/sys/fs/selinux"):
                 if len(os.listdir("/sys/fs/selinux")) > 0:
-                    out.write("!!!!!! If you're seeing this you're running with SELinux enabled which shouldn't work on Waydroid !!!!!!\n\n")
+                    out.write(
+                        "!!!!!! If you're seeing this you're running with SELinux enabled which shouldn't work on Waydroid !!!!!!\n\n")
             out.write("---Detected Device Info---\n\n")
             out.write("isAB=false\n")
             out.write("isSAR=false\n")
             out.write("ramdisk=false\n")
             uname = os.uname()
-            out.write("kernel=%s %s %s %s\n" % (uname.sysname, uname.machine, uname.release, uname.version))
-            proc = subprocess.run(["waydroid", "--version"], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+            out.write("kernel=%s %s %s %s\n" % (uname.sysname,
+                      uname.machine, uname.release, uname.version))
+            proc = subprocess.run(
+                ["waydroid", "--version"], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
             out.write("waydroid arch=%s\n" % get_arch()[0])
             out.write("waydroid version=%s" % proc.stdout.decode())
 
@@ -553,7 +590,7 @@ def ota():
         os.remove(source)
         if os.path.isdir(os.path.join(OVERLAY, "sbin")):
             shutil.rmtree(os.path.join(OVERLAY, "sbin"))
-    
+
     if not has_overlay():
         raise ValueError("OTA survival not supported on non overlay Waydroid")
     while True:
@@ -573,6 +610,7 @@ def ota():
                         copy(mfile)
         time.sleep(1)
 
+
 def magisk_cmd(args, pipe=True):
     pipe = subprocess.PIPE if pipe else None
     is_root = check_root()
@@ -590,9 +628,11 @@ def magisk_cmd(args, pipe=True):
     waydroid_session = get_waydroid_session()
     with WaydroidFreezeUnfreeze(waydroid_session):
         lxc = os.path.join(WAYDROID_DIR, "lxc")
-        command = ["lxc-attach", "-P", lxc, "-n", "waydroid", "--", "/sbin/magisk"]
+        command = ["lxc-attach", "-P", lxc, "-n",
+                   "waydroid", "--", "/sbin/magisk"]
         command.extend(args)
-        proc = subprocess.run(command, env={"PATH": os.environ['PATH'] + ":/system/bin:/vendor/bin"}, stderr=pipe, stdout=pipe)
+        proc = subprocess.run(command, env={
+                              "PATH": os.environ['PATH'] + ":/system/bin:/vendor/bin"}, stderr=pipe, stdout=pipe)
         if proc.stdout:
             status = 0
             result = proc.stdout.decode()
@@ -600,6 +640,7 @@ def magisk_cmd(args, pipe=True):
             status = 1
             result = proc.stderr.decode()
     return (status, result)
+
 
 def magisk_sqlite(query):
     is_root = check_root()
@@ -616,11 +657,13 @@ def magisk_sqlite(query):
     waydroid_session = get_waydroid_session()
     with WaydroidFreezeUnfreeze(waydroid_session):
         lxc = os.path.join(WAYDROID_DIR, "lxc")
-        command = ["lxc-attach", "-P", lxc, "-n", "waydroid", "--", "/sbin/magisk", "--sqlite", query]
-        proc = subprocess.run(command, env={"PATH": os.environ['PATH'] + ":/system/bin:/vendor/bin"}, universal_newlines=False, stdout=subprocess.PIPE, 
-                                stderr=subprocess.DEVNULL)
+        command = ["lxc-attach", "-P", lxc, "-n", "waydroid",
+                   "--", "/sbin/magisk", "--sqlite", query]
+        proc = subprocess.run(command, env={"PATH": os.environ['PATH'] + ":/system/bin:/vendor/bin"}, universal_newlines=False, stdout=subprocess.PIPE,
+                              stderr=subprocess.DEVNULL)
         result = proc.stdout.decode()
     return result
+
 
 def install_module(modpath):
     is_root = check_root()
@@ -638,10 +681,12 @@ def install_module(modpath):
     if not os.path.exists(tmpdir):
         os.makedirs(tmpdir)
     shutil.copyfile(modpath, os.path.join(tmpdir, "module.zip"))
-    args = ["--install-module", os.path.join("/data", "waydroid_tmp", "module.zip")]
+    args = ["--install-module",
+            os.path.join("/data", "waydroid_tmp", "module.zip")]
     magisk_cmd(args, pipe=False)
     os.remove(os.path.join(tmpdir, "module.zip"))
     restart_session_if_needed()
+
 
 def list_modules():
     is_root = check_root()
@@ -656,11 +701,13 @@ def list_modules():
         return
     waydroid_session = get_waydroid_session()
     with WaydroidFreezeUnfreeze(waydroid_session):
-        modpath = os.path.join(xdg_data_home(), "waydroid", "data", "adb", "modules")
+        modpath = os.path.join(
+            xdg_data_home(), "waydroid", "data", "adb", "modules")
         if not os.path.isdir(modpath):
             logging.error("No Magisk modules are currently installed")
             return
         print("\n".join("- %s" % mod for mod in os.listdir(modpath)))
+
 
 def remove_module(modname):
     is_root = check_root()
@@ -675,7 +722,8 @@ def remove_module(modname):
         return
     waydroid_session = get_waydroid_session()
     with WaydroidFreezeUnfreeze(waydroid_session):
-        modpath = os.path.join(xdg_data_home(), "waydroid", "data", "adb", "modules")    
+        modpath = os.path.join(
+            xdg_data_home(), "waydroid", "data", "adb", "modules")
         if not os.path.isdir(os.path.join(modpath, modname)):
             logging.error("'%s' is not an installed Magisk module" % modname)
             return
@@ -684,6 +732,7 @@ def remove_module(modname):
             shutil.rmtree(os.path.join(modpath, modname))
         logging.info("'%s' Magisk module has been removed" % modname)
         restart_session_if_needed()
+
 
 def su(args=None, pipe=True):
     is_root = check_root()
@@ -700,19 +749,24 @@ def su(args=None, pipe=True):
     waydroid_session = get_waydroid_session()
     with WaydroidFreezeUnfreeze(waydroid_session):
         lxc = os.path.join(WAYDROID_DIR, "lxc")
-        command = ["lxc-attach", "-P", lxc, "-n", "waydroid", "--", "su", "-c", "mknod",  "-m", "666", "/dev/tty", "c", "5", "0", "2>", "/dev/null"]
-        subprocess.run(command, env={"PATH": os.environ['PATH'] + ":/system/bin:/vendor/bin"})
+        command = ["lxc-attach", "-P", lxc, "-n", "waydroid", "--", "su", "-c",
+                   "mknod",  "-m", "666", "/dev/tty", "c", "5", "0", "2>", "/dev/null"]
+        subprocess.run(
+            command, env={"PATH": os.environ['PATH'] + ":/system/bin:/vendor/bin"})
         command = ["lxc-attach", "-P", lxc, "-n", "waydroid", "--", "su"]
         if args:
             command.append("-c")
             command.extend(args)
         if not args:
-            subprocess.run(command, env={"PATH": os.environ['PATH'] + ":/system/bin:/vendor/bin"})
+            subprocess.run(
+                command, env={"PATH": os.environ['PATH'] + ":/system/bin:/vendor/bin"})
         else:
-            proc = subprocess.run(command, env={"PATH": os.environ['PATH'] + ":/system/bin:/vendor/bin"}, stdout=subprocess.PIPE if pipe else None, stderr=subprocess.DEVNULL)
+            proc = subprocess.run(command, env={
+                                  "PATH": os.environ['PATH'] + ":/system/bin:/vendor/bin"}, stdout=subprocess.PIPE if pipe else None, stderr=subprocess.DEVNULL)
             if proc.stdout:
                 result = proc.stdout.decode()
     return result
+
 
 def get_package(query):
     name = ""
@@ -724,83 +778,116 @@ def get_package(query):
         app_id = int(app_id.split(":")[-1])
     return (name, app_id)
 
+
 def main():
     if not is_waydroid_initialized():
         logging.error("Waydroid is not initialized.")
         return
     arch, bits = get_arch()
 
-    parser = argparse.ArgumentParser(description="Magisk Delta installer and manager for Waydroid", prog="waydroid_magisk")
-    parser.add_argument("-v", "--version", action="store_true", help="Print version")
-    parser.add_argument("-o", "--ota", action="store_true", help="Handles survival during Waydroid updates (overlay only)")
+    parser = argparse.ArgumentParser(
+        description="Magisk Delta installer and manager for Waydroid", prog="waydroid_magisk")
+    parser.add_argument("-v", "--version",
+                        action="store_true", help="Print version")
+    parser.add_argument("-o", "--ota", action="store_true",
+                        help="Handles survival during Waydroid updates (overlay only)")
 
     subparsers = parser.add_subparsers(dest="command")
     subparsers.add_parser("status", help="Query Magisk status")
-    parser_install = subparsers.add_parser("install", help="Install Magisk Delta in Waydroid")
-    parser_install.add_argument("-u", "--update", action="store_true", help="Update Magisk Delta")
-    parser_install.add_argument("-c","--canary", action="store_true", help="Install Magisk Delta canary channel (default canary)")
-    parser_install.add_argument("-d","--debug", action="store_true", help="Install Magisk Delta debug channel (default canary)")
-    parser_install.add_argument("-t", "--tmpdir", nargs="?", type=str, default="tmpdir", help="Custom path to use as an temporary  directory")
+    parser_install = subparsers.add_parser(
+        "install", help="Install Magisk Delta in Waydroid")
+    parser_install.add_argument(
+        "-u", "--update", action="store_true", help="Update Magisk Delta")
+    parser_install.add_argument("-c", "--canary", action="store_true",
+                                help="Install Magisk Delta canary channel (default canary)")
+    parser_install.add_argument("-d", "--debug", action="store_true",
+                                help="Install Magisk Delta debug channel (default canary)")
+    parser_install.add_argument("-t", "--tmpdir", nargs="?", type=str,
+                                default="tmpdir", help="Custom path to use as an temporary  directory")
 
     subparsers.add_parser("setup", help="Setup magisk env")
 
     subparsers.add_parser("remove", help="Remove Magisk Delta from Waydroid")
 
     parser_log = subparsers.add_parser("log", help="Follow magisk log.")
-    parser_log.add_argument("-s", "--save", action="store_true", help="Save magisk log locally")
+    parser_log.add_argument(
+        "-s", "--save", action="store_true", help="Save magisk log locally")
 
-    parser_modules = subparsers.add_parser("module", help="Manage modules in Magisk Delta")
-    parser_modules_subparser = parser_modules.add_subparsers(dest="command_module")
-    parser_modules_install = parser_modules_subparser.add_parser("install", help="Install magisk module")
-    parser_modules_install.add_argument("MODULE", type=str, help="Path to magisk module to install")
-    parser_modules_remove = parser_modules_subparser.add_parser("remove", help="Remove magisk module")
-    parser_modules_remove.add_argument("MODULE", type=str, help="Module name to remove")
-    parser_modules_list = parser_modules_subparser.add_parser("list", help="List all installed magisk modules")
+    parser_modules = subparsers.add_parser(
+        "module", help="Manage modules in Magisk Delta")
+    parser_modules_subparser = parser_modules.add_subparsers(
+        dest="command_module")
+    parser_modules_install = parser_modules_subparser.add_parser(
+        "install", help="Install magisk module")
+    parser_modules_install.add_argument(
+        "MODULE", type=str, help="Path to magisk module to install")
+    parser_modules_remove = parser_modules_subparser.add_parser(
+        "remove", help="Remove magisk module")
+    parser_modules_remove.add_argument(
+        "MODULE", type=str, help="Module name to remove")
+    parser_modules_list = parser_modules_subparser.add_parser(
+        "list", help="List all installed magisk modules")
 
     parser_su = subparsers.add_parser("su", help="Manage su in Magisk Delta")
     parser_su_subparser = parser_su.add_subparsers(dest="command_su")
     parser_su_subparser.add_parser("shell", help="Opens the magisk su shell")
-    parser_su_subparser.add_parser("list", help="Return apps status in su database")
-    parser_su_allow = parser_su_subparser.add_parser("allow", help="Allow su access to app")
+    parser_su_subparser.add_parser(
+        "list", help="Return apps status in su database")
+    parser_su_allow = parser_su_subparser.add_parser(
+        "allow", help="Allow su access to app")
     parser_su_allow.add_argument("PKG", type=str, help="PKG")
-    parser_su_deny = parser_su_subparser.add_parser("deny", help="Deny su access to app")
+    parser_su_deny = parser_su_subparser.add_parser(
+        "deny", help="Deny su access to app")
     parser_su_deny.add_argument("PKG", type=str, help="PKG")
 
-
-    parser_hide = subparsers.add_parser("magiskhide", help="Execute magisk hide commands")
-    parser_hide_subparser = parser_hide.add_subparsers(dest="command_magiskhide")
-    parser_hide_subparser.add_parser("status", help="Return the MagiskHide status")
+    parser_hide = subparsers.add_parser(
+        "magiskhide", help="Execute magisk hide commands")
+    parser_hide_subparser = parser_hide.add_subparsers(
+        dest="command_magiskhide")
+    parser_hide_subparser.add_parser(
+        "status", help="Return the MagiskHide status")
     parser_hide_subparser.add_parser("sulist", help="Return the SuList status")
     parser_hide_subparser.add_parser("enable", help="Enable MagiskHide")
-    parser_hide_subparser.add_parser("disable", help="Disable MagiskHide")   
-    parser_hide_add = parser_hide_subparser.add_parser("add", help="Add a new target to the hidelist (sulist)")
+    parser_hide_subparser.add_parser("disable", help="Disable MagiskHide")
+    parser_hide_add = parser_hide_subparser.add_parser(
+        "add", help="Add a new target to the hidelist (sulist)")
     parser_hide_add.add_argument("PKG", type=str, help="PKG [PROC]")
-    parser_hide_remove = parser_hide_subparser.add_parser("rm", help="Remove target(s) from the hidelist (sulist)")
-    parser_hide_remove.add_argument("PKG", nargs="+", type=str, help="PKG [PROC]")
-    parser_hide_ls = parser_hide_subparser.add_parser("ls", help="Print the current hidelist (sulist)")
+    parser_hide_remove = parser_hide_subparser.add_parser(
+        "rm", help="Remove target(s) from the hidelist (sulist)")
+    parser_hide_remove.add_argument(
+        "PKG", nargs="+", type=str, help="PKG [PROC]")
+    parser_hide_ls = parser_hide_subparser.add_parser(
+        "ls", help="Print the current hidelist (sulist)")
 
-
-    parser_zygisk = subparsers.add_parser("zygisk", help="Execute zygisk commands")
-    parser_zygisk_subparser = parser_zygisk.add_subparsers(dest="command_zygisk")
-    parser_zygisk_subparser.add_parser("status", help="Return the zygisk status")
-    parser_zygisk_subparser.add_parser("enable", help="Enable zygisk (requires waydroid restart)")
-    parser_zygisk_subparser.add_parser("disable", help="Disable zygisk (requires waydroid restart)")
+    parser_zygisk = subparsers.add_parser(
+        "zygisk", help="Execute zygisk commands")
+    parser_zygisk_subparser = parser_zygisk.add_subparsers(
+        dest="command_zygisk")
+    parser_zygisk_subparser.add_parser(
+        "status", help="Return the zygisk status")
+    parser_zygisk_subparser.add_parser(
+        "enable", help="Enable zygisk (requires waydroid restart)")
+    parser_zygisk_subparser.add_parser(
+        "disable", help="Disable zygisk (requires waydroid restart)")
 
     args = parser.parse_args()
 
     if args.command == "status":
         magisk_status()
     elif args.command == "install":
-        magisk_channels = download_json("https://raw.githubusercontent.com/nitanmarcel/waydroid-magisk/main/magisk.json")
+        magisk_channels = download_json(
+            "https://raw.githubusercontent.com/nitanmarcel/waydroid-magisk/main/magisk.json")
         magisk_url = magisk_channels["canary"]
-        magisk_url = magisk_channels["canary" if args.canary else "debug" if args.debug else "canary"] # stable is disabled for now
+        # stable is disabled for now
+        magisk_url = magisk_channels["canary" if args.canary else "debug" if args.debug else "canary"]
         install_fnc = install
         if args.update:
             install_fnc = update
         if args.tmpdir == "tmpdir":
             install_fnc(arch, bits, magisk_url, restart_after=True)
         else:
-            install_fnc(arch, bits, magisk_url=magisk_url, workdir=args.tmpdir, restart_after=True)
+            install_fnc(arch, bits, magisk_url=magisk_url,
+                        workdir=args.tmpdir, restart_after=True)
     elif args.command == "setup":
         setup()
     elif args.command == "remove":
@@ -825,14 +912,16 @@ def main():
                 _logging, notification, policy, uid, until = line.split("|")
                 pkg, uid = get_package(int(uid.split("=")[-1]))
                 if pkg:
-                    print("- %s | %s" % (pkg, "allowed" if int(policy.split("=")[-1]) == 2 else "denied"))
+                    print(
+                        "- %s | %s" % (pkg, "allowed" if int(policy.split("=")[-1]) == 2 else "denied"))
         elif args.command_su == "allow" or args.command_su == "deny":
             policy = "2" if args.command_su == "allow" else "1"
             pkg, app_id = get_package(args.PKG)
             if not app_id:
                 logging.error("Invalid package name")
                 return
-            magisk_sqlite("REPLACE INTO policies VALUES(%s,%s,0,1,1)" % (app_id, policy))
+            magisk_sqlite("REPLACE INTO policies VALUES(%s,%s,0,1,1)" %
+                          (app_id, policy))
         else:
             parser_su.print_help()
     elif args.command == "magiskhide":
@@ -860,15 +949,19 @@ def main():
                 logging.error(message)
     elif args.command == "zygisk":
         if args.command_zygisk == "status":
-            result = magisk_sqlite("SELECT value FROM settings WHERE key == 'zygisk'")
+            result = magisk_sqlite(
+                "SELECT value FROM settings WHERE key == 'zygisk'")
             state = False
             if result:
                 state = bool(int(result.split("=")[-1]))
-                logging.info("Zygisk is %s" % ("enabled" if state else "disabled"))
+                logging.info("Zygisk is %s" %
+                             ("enabled" if state else "disabled"))
         elif args.command_zygisk == "enable":
-            magisk_sqlite("REPLACE INTO settings (key,value) VALUES('zygisk',1)")
+            magisk_sqlite(
+                "REPLACE INTO settings (key,value) VALUES('zygisk',1)")
         elif args.command_zygisk == "disable":
-            magisk_sqlite("REPLACE INTO settings (key,value) VALUES('zygisk',0)")
+            magisk_sqlite(
+                "REPLACE INTO settings (key,value) VALUES('zygisk',0)")
         else:
             parser_zygisk.print_help()
     elif args.ota:
