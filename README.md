@@ -34,7 +34,9 @@ Magisk Delta manager for Waydroid.
 3. `sudo apt update`
 4. `sudo apt install waydroid-magisk` 
 5. run `sudo waydroid_magisk install` to install Magisk
-6. **To avoid any issues it's important to read [FAQ](#faq) before using Magisk Delta on waydroid.**
+6. start waydroid and run `sudo waydroid_magisk setup` to trigger first time setup.
+  * Mandatory only if you're not using Magisk Delta Manager!
+7. **To avoid any issues it's important to read [FAQ](#faq) before using Magisk Delta on waydroid.**
 
 ### From GitHub
 1. git clone `https://github.com/nitanmarcel/waydroid-magisk-installer/`
@@ -47,7 +49,9 @@ Magisk Delta manager for Waydroid.
 4. enable ota survival service
   * For systemd `sudo systemctl enable --now waydroid_magisk_ota.service`
   * For upstart `sudo start waydroid_magisk_ota.service`
-5. **To avoid any issues it's important to read [FAQ](#faq) before using Magisk Delta on waydroid.**
+5. start waydroid and run `sudo waydroid_magisk setup` to trigger first time setup.
+  * Mandatory only if you're not using Magisk Delta Manager!
+6. **To avoid any issues it's important to read [FAQ](#faq) before using Magisk Delta on waydroid.**
 
 # Usage
 * a detailed list of all the available commands can be found in [API.md](https://github.com/nitanmarcel/waydroid-magisk/blob/main/README.md)
