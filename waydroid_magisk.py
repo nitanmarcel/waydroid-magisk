@@ -363,6 +363,7 @@ def install(arch, bits, magisk_url, workdir=None, restart_after=True):
         if restart_after:
             restart_session_if_needed()
         logging.info("Done")
+        logging.info("Run waydroid_magisk setup after waydroid starts again or install Magisk Delta Manager")
         return True
 
 def setup():
@@ -423,7 +424,7 @@ def uninstall(restart_after=True):
             logging.error("Failed to mount rootfs. Make sure Waydroid is stopped during the installation.")
             return
     logging.info("Removing Magisk Delta")
-    shutil.copyfile(os.path.join(INIT_OVERLAY, "bootanim.rc.gz"), os.path.join(INIT_OVERLAY, "bootanim.rc.gz"))
+    shutil.copyfile(os.path.join(INIT_OVERLAY, "bootanim.rc.gz"), os.path.join(WAYDROID_DIR, "bootanim.rc.gz"))
     for file in MAGISK_FILES:
         if os.path.exists(file):
             if os.path.isdir(file):
