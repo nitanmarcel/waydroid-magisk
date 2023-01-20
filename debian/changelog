@@ -1,3 +1,15 @@
+waydroid-magisk (1.2.2) bullseye; urgency=medium
+
+  * waydroid_magisk: fix update
+  * waydroid_magisk: add mandatory magisk setup command; unsilence module install
+  * waydroid_magisk: allow to cancel reboots
+  * waydroid_magisk: add status command
+  * docs: document setup command
+  * waydroid_magisk: fix uninstall
+  * waydroid_magisk: version 1.2.2
+
+ -- Marcel Alexandru Nitan <nitan.marcel@protonmail.com>  Fri, 20 Jan 2023 14:26:26 +0200
+
 waydroid-magisk (1.2.1) bullseye; urgency=medium
 
   * doc: systemctl enable --now does the same as enable and start
