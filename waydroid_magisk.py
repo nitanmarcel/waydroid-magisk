@@ -19,7 +19,7 @@ import subprocess
 import configparser
 import json
 import datetime
-import hashlib
+import filecmp
 
 WITH_DBUS = True
 
@@ -128,7 +128,7 @@ def get_arch():
         return "arm64-v8a", 64
     if plat == "i686":
         return "x86_64", 64
-    logging.error("%s not supported" % plat)
+    raise ValueError("%s not supported" % plat)
 
 
 def is_waydroid_initialized():
@@ -153,6 +153,14 @@ def is_installed():
             umount_system()
     return installed
 
+def is_set_up():
+    magisk_init = os.path.join(
+            MAGISK_OVERLAY, "magisk%s" % get_arch()[-1])
+    if not has_overlay():
+        magisk_init = os.path.join(
+                WAYDROID_DIR, "rootfs", "system", "etc", "init", "magisk", "magisk%s" % get_arch()[-1])
+    magisk_data = os.path.join(xdg_data_home(), "waydroid", "data", "adb", "magisk", "magisk%s" % get_arch()[-1])
+    return os.path.exists(magisk_data) and filecmp.cmp(magisk_init, magisk_data, shallow=False)
 
 def WaydroidContainerDbus():
     return dbus.Interface(dbus.SystemBus().get_object("id.waydro.Container", "/ContainerManager"), "id.waydro.ContainerManager")
@@ -902,6 +910,9 @@ def main():
     elif args.command == "log":
         magisk_log(save=args.save)
     elif args.command == "module":
+        if is_running() and not is_set_up():
+            logging.error("Incomplete magisk setup")
+            return
         if args.command_module == "install":
             install_module(args.MODULE)
         elif args.command_module == "remove":
@@ -911,6 +922,9 @@ def main():
         else:
             parser_modules.print_help()
     elif args.command == "su":
+        if is_running() and not is_set_up():
+            logging.error("Incomplete magisk setup")
+            return
         if args.command_su == "shell":
             su()
         elif args.command_su == "list":
@@ -932,6 +946,9 @@ def main():
         else:
             parser_su.print_help()
     elif args.command == "magiskhide":
+        if is_running() and not is_set_up():
+            logging.error("Incomplete magisk setup")
+            return
         cmd = ["magiskhide"]
         if args.command_magiskhide == "status":
             cmd.append("status")
@@ -955,6 +972,9 @@ def main():
             if status == 1:
                 logging.error(message)
     elif args.command == "zygisk":
+        if is_running() and not is_set_up():
+            logging.error("Incomplete magisk setup")
+            return
         if args.command_zygisk == "status":
             result = magisk_sqlite(
                 "SELECT value FROM settings WHERE key == 'zygisk'")
