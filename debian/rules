@@ -5,4 +5,4 @@
 
 override_dh_auto_install:
 	dh_auto_install -- SYSD_DIR=/lib/systemd/system
-	$(MAKE) DESTDIR=$(CURDIR)/debian/waydroid-magisk USE_SYSTEMD=1
+	USE_SYSTEMD=1 $(MAKE) DESTDIR=$(CURDIR)/debian/waydroid-magisk install
