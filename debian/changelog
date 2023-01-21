@@ -1,3 +1,11 @@
+waydroid-magisk (1.2.4) bullseye; urgency=medium
+
+  * waydroid_magisk: also copy magisk32 lib on 64 waydroid
+  * waydroid_magisk: avoid running magisk specific commands if the enviroment is not set up
+  * waydroid_magisk: optionally use Magisk Delta Manager autoinstaller.
+
+ -- Marcel Alexandru Nitan <nitan.marcel@protonmail.com>  Sat, 21 Jan 2023 14:47:46 +0200
+
 waydroid-magisk (1.2.3) bullseye; urgency=medium
 
   * waydroid_magisk: run autopep8 to clean the code
