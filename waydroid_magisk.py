@@ -302,6 +302,13 @@ def install(arch, bits, magisk_url, workdir=None, restart_after=True):
                 MAGISK_OVERLAY, re.match("lib(.*)\.so", lib).group(1)))
             os.chmod(os.path.join(MAGISK_OVERLAY, re.match(
                 "lib(.*)\.so", lib).group(1)), 0o775)
+        if bits == 64:
+            if arch == "arm64-v8a":
+                magisk32 = os.path.join(tempdir, "lib", "armeabi-v7a", "libmagisk32.so")
+            elif arch == "x86_64": 
+                magisk32 = os.path.join(tempdir, "lib", "x86", "libmagisk32.so")
+            shutil.copyfile(magisk32, os.path.join(MAGISK_OVERLAY, "magisk32"))
+            os.chmod(os.path.join(MAGISK_OVERLAY, "magisk32"), 0o775)
         assets = os.path.join(tempdir, "assets")
         extra_copy = ["util_functions.sh", "addon.d.sh", "boot_patch.sh"]
         for extra in extra_copy:
