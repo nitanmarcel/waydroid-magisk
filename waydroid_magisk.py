@@ -275,7 +275,7 @@ def umount_system():
         time.sleep(1)
 
 
-def install(arch, bits, magisk_url, workdir=None, restart_after=True):
+def install(arch, bits, magisk_url, workdir=None, restart_after=True, with_manager=False):
     is_root = check_root()
     if not is_root:
         logging.error("This command needs to be ran as a priviliged user!")
@@ -322,8 +322,9 @@ def install(arch, bits, magisk_url, workdir=None, restart_after=True):
         for extra in extra_copy:
             shutil.copyfile(os.path.join(assets, extra),
                             os.path.join(MAGISK_OVERLAY, extra))
-        shutil.copyfile(os.path.join(tempdir, "magisk-delta.apk"),
-                        os.path.join(MAGISK_OVERLAY, "magisk.apk"))
+        if with_manager:
+            shutil.copyfile(os.path.join(tempdir, "magisk-delta.apk"),
+                            os.path.join(MAGISK_OVERLAY, "magisk.apk"))
 
         logging.info("Creating bootanim.rc")
         with open(os.path.join(INIT_OVERLAY, "bootanim.rc"), "w+") as handle:
@@ -520,10 +521,10 @@ def uninstall(restart_after=True):
     return True
 
 
-def update(arch, bits, magisk_url, restart_after=False, workdir=None):
+def update(arch, bits, magisk_url, restart_after=False, workdir=None, with_manager=False):
     uninstalled = uninstall(restart_after=False)
     if uninstalled:
-        installed = install(arch, bits, magisk_url=magisk_url, workdir=workdir)
+        installed = install(arch, bits, magisk_url=magisk_url, workdir=workdir, with_manager=with_manager)
         if installed:
             logging.info(
                 "Manually update Magisk Manager after booting Waydroid.")
@@ -819,6 +820,7 @@ def main():
                                 help="Install Magisk Delta debug channel (default canary)")
     parser_install.add_argument("-t", "--tmpdir", nargs="?", type=str,
                                 default="tmpdir", help="Custom path to use as an temporary  directory")
+    parser_install.add_argument("-m", "--manager", action="store_true", help="Also install Magisk Delta Manager")
 
     subparsers.add_parser("setup", help="Setup magisk env")
 
@@ -899,10 +901,10 @@ def main():
         if args.update:
             install_fnc = update
         if args.tmpdir == "tmpdir":
-            install_fnc(arch, bits, magisk_url, restart_after=True)
+            install_fnc(arch, bits, magisk_url, restart_after=True, with_manager=args.manager)
         else:
             install_fnc(arch, bits, magisk_url=magisk_url,
-                        workdir=args.tmpdir, restart_after=True)
+                        workdir=args.tmpdir, restart_after=True, with_manager=args.manager)
     elif args.command == "setup":
         setup()
     elif args.command == "remove":
