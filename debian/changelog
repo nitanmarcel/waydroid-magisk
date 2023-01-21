@@ -1,3 +1,10 @@
+waydroid-magisk (1.2.5) bullseye; urgency=medium
+
+  * debian: fix systemd service installation
+  * waydroid_magisk: version 1.2.5
+
+ -- Marcel Alexandru Nitan <nitan.marcel@protonmail.com>  Sat, 21 Jan 2023 23:08:54 +0200
+
 waydroid-magisk (1.2.4) bullseye; urgency=medium
 
   * waydroid_magisk: also copy magisk32 lib on 64 waydroid
