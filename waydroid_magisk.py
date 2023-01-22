@@ -213,9 +213,10 @@ def _restart_session_if_needed():
             time.sleep(1)
         lxc = os.path.join(WAYDROID_DIR, "lxc")
         command = ["lxc-attach", "-P", lxc, "-n",
-                   "waydroid", "--", "/system/bin/sh", "reboot"]
-        logging.info("Stopping Waydroid")
-        logging.info("Manually start Waydroid again.")
+                   "waydroid", "--", "service", "call", "waydroidhardware", "4"]
+        logging.info("Stopping waydroid")
+        subprocess.run(command)
+        logging.info("Starting Waydroid")
 
 
 def mount_system():
