@@ -228,20 +228,30 @@ def mount_system():
                    stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     subprocess.run(["resize2fs", rootfs, "2G"],
                    stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-    subprocess.run(["mount", "-o", "rw,loop", rootfs, OVERLAY],
-                   stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-    return True
+    tries = 5
+    for x in range(tries):
+        with contextlib.suppress(subprocess.CalledProcessError):
+            subprocess.run(["mount", "-o", "rw,loop", rootfs, OVERLAY],
+                           stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        if os.path.ismount(OVERLAY):
+            return True
+        time.sleep(1)
+    logging.info("Failed to mount waydroid system")
+    return False
 
 
 def umount_system():
-    mounted = os.path.ismount(OVERLAY)
-    while mounted:
+    tries = 5
+    for x in range(tries):
         with contextlib.suppress(subprocess.CalledProcessError):
             subprocess.run(
                 ["umount", OVERLAY],
                 stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-    mounted = os.path.ismount(OVERLAY)
+        if not os.path.ismount(OVERLAY):
+            return True
     time.sleep(1)
+    logging.info("Failed to umount waydroid system")
+    return False
 
 
 # Manager
