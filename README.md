@@ -19,6 +19,7 @@ Magisk Delta manager for Waydroid.
   - [How is this different from other scripts?](#how-is-this-different-from-other-scripts)
   - [What is Magisk Delta?](#what-is-magisk-delta)
   - [Arch Linux](#arch-linux)
+- [Credits](#credits)
 
 # Installing Magisk on Waydroid
 
@@ -92,4 +93,9 @@ magisk_waydroid is a Magisk Delta manager, bringing all the features from Magisk
 Magisk Delta is a fork of the official Magisk Manager with the old Magisk Hide feature re-added and other new features. You can find a list of differences between Magisk Delta and official Magisk [here](https://github.com/HuskyDG/magisk-files/blob/main/note_stable.md#diffs-to-official-magisk).
 
 ## Arch Linux
-linux-zen does not support Magisk Delta. Whatever, people reported that `linux-xanmod-anbox` with `linux-xanmod-anbox-headers` from chaotic AUR works without any issues. 
+linux-zen does not support Magisk Delta. Whatever, people reported that `linux-xanmod-anbox` with `linux-xanmod-anbox-headers` from chaotic AUR works without any issues.
+
+# Credits
+* [Waydroid Team](github.com/waydroid/waydroid)
+* Magisk Delta Maintainer - [HuskyDG](https://github.com/HuskyDG)
+* [Others](https://huskydg.github.io/magisk-files/#credits)
