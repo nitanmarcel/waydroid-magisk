@@ -1,8 +1,12 @@
 #!/usr/bin/env python3
 
 import argparse
+import configparser
+import contextlib
+import datetime
 import filecmp
 import gzip
+import json
 import logging
 import os
 import platform
@@ -10,16 +14,12 @@ import random
 import re
 import shutil
 import string
+import subprocess
 import tempfile
 import time
 import urllib.error
 import urllib.request
 import zipfile
-import subprocess
-import configparser
-import json
-import datetime
-import filecmp
 
 WITH_DBUS = True
 
@@ -65,28 +65,33 @@ MAGISK_FILES = [
     "/var/lib/waydroid/overlay_rw/system/system/etc/init/magisk/config",
     "/var/lib/waydroid/overlay_rw/system/system/etc/init/magisk/magiskpolicy",
     "/var/lib/waydroid/overlay_rw/system/system/etc/init/magisk/magisk32",
-    "/var/lib/waydroid/overlay_rw/system/system/etc/init/magisk/magiskboot"
-]
+    "/var/lib/waydroid/overlay_rw/system/system/etc/init/magisk/magiskboot"]
 
 
-def check_root():
-    if not os.getuid() == 0:
-        return False
-    return True
+# UTILS
+
+def WaydroidContainerDbus():
+    return dbus.Interface(
+        dbus.SystemBus().get_object(
+            "id.waydro.Container", "/ContainerManager"),
+        "id.waydro.ContainerManager")
 
 
-def has_overlay():
-    config = configparser.ConfigParser()
-    config.read(CONFIG_FILE)
-    if "mount_overlays" in config["waydroid"].keys():
-        return config["waydroid"]["mount_overlays"].lower() == "true"
-    return False
+class WaydroidFreezeUnfreeze:
+    def __init__(self, session) -> None:
+        self._session = session
 
+    def __enter__(self):
+        if self._frozen:
+            WaydroidContainerDbus().Unfreeze()
 
-def get_systemimg_path():
-    config = configparser.ConfigParser()
-    config.read(CONFIG_FILE)
-    return os.path.join(config["waydroid"]["images_path"], "system.img")
+    def __exit__(self, exc_type, exc_value, traceback):
+        if self._frozen:
+            WaydroidContainerDbus().Freeze()
+
+    @property
+    def _frozen(self):
+        return self._session["state"] == "FROZEN" if self._session else False
 
 
 def download_obj(url, destination, filename):
@@ -113,6 +118,26 @@ def download_json(url):
     return result
 
 
+def is_running():
+    return len(os.listdir(os.path.join(WAYDROID_DIR, "rootfs"))) > 0
+
+
+def is_root():
+    return os.getuid() == 0
+
+
+def is_waydroid_initialized():
+    return os.path.exists(CONFIG_FILE)
+
+
+def has_overlay():
+    config = configparser.ConfigParser()
+    config.read(CONFIG_FILE)
+    if "mount_overlays" in config["waydroid"].keys():
+        return config["waydroid"]["mount_overlays"].lower() == "true"
+    return False
+
+
 def get_arch():
     plat = platform.machine()
     if plat == "x86":
@@ -131,51 +156,18 @@ def get_arch():
     raise ValueError("%s not supported" % plat)
 
 
-def is_waydroid_initialized():
-    return os.path.exists(CONFIG_FILE)
-
-
-def is_waydroid_data_ready():
-    return len(os.listdir(os.path.join(xdg_data_home(), "waydroid", "data")) > 0)
-
-
-def is_installed():
-    overlay_magisk = os.path.join(
-        WAYDROID_DIR, "overlay/system/etc/init/magisk")
-    rootfs_magisk = os.path.join(WAYDROID_DIR, "rootfs/system/etc/init/magisk")
-    installed = os.path.exists(overlay_magisk)
-    if not has_overlay():
-        if len(os.listdir(os.path.join(WAYDROID_DIR, "rootfs"))) > 0:
-            installed = os.path.exists(rootfs_magisk)
-        else:
-            mount_system()
-            installed = os.path.exists(overlay_magisk)
-            umount_system()
-    return installed
-
-def is_set_up():
-    magisk_init = os.path.join(
-            MAGISK_OVERLAY, "magisk%s" % get_arch()[-1])
-    if not has_overlay():
-        magisk_init = os.path.join(
-                WAYDROID_DIR, "rootfs", "system", "etc", "init", "magisk", "magisk%s" % get_arch()[-1])
-    magisk_data = os.path.join(xdg_data_home(), "waydroid", "data", "adb", "magisk", "magisk%s" % get_arch()[-1])
-    return os.path.exists(magisk_data) and filecmp.cmp(magisk_init, magisk_data, shallow=False)
-
-def WaydroidContainerDbus():
-    return dbus.Interface(dbus.SystemBus().get_object("id.waydro.Container", "/ContainerManager"), "id.waydro.ContainerManager")
-
-
-def WaydroidSessionDbus():
-    return dbus.Interface(dbus.SystemBus().get_object("id.waydro.Session", "/SessionManager"), "id.waydro.SessionManager")
-
-
 def get_waydroid_session():
     if WITH_DBUS:
         try:
             return WaydroidContainerDbus().GetSession()
         except dbus.exceptions.DBusException:
             return
+
+
+def get_systemimg_path():
+    config = configparser.ConfigParser()
+    config.read(CONFIG_FILE)
+    return os.path.join(config["waydroid"]["images_path"], "system.img")
 
 
 def xdg_data_home():
@@ -185,10 +177,6 @@ def xdg_data_home():
     cfg = configparser.ConfigParser()
     cfg.read(os.path.join(WAYDROID_DIR, "session.cfg"))
     return cfg["session"]["xdg_data_home"]
-
-
-def is_running():
-    return len(os.listdir(os.path.join(WAYDROID_DIR, "rootfs"))) > 0
 
 
 def stop_session_if_needed():
@@ -209,7 +197,7 @@ def _restart_session_if_needed():
     waydroid_session = get_waydroid_session()
     seconds = 5
     if waydroid_session:
-        for i in range(0, seconds):
+        for i in range(seconds):
             print("Restarting Waydroid in %s (press ^C to cancel)" %
                   (seconds - i))
             time.sleep(1)
@@ -218,34 +206,16 @@ def _restart_session_if_needed():
         logging.info("Starting Waydroid")
         WaydroidContainerDbus().Start(waydroid_session)
     elif is_running():
-        for i in range(0, seconds):
-            print("Stopping Waydroid in %s (press ^C to cancel)" % (seconds - i))
+        for i in range(seconds):
+            print(
+                "Stopping Waydroid in %s (press ^C to cancel)" %
+                (seconds - i))
             time.sleep(1)
         lxc = os.path.join(WAYDROID_DIR, "lxc")
         command = ["lxc-attach", "-P", lxc, "-n",
                    "waydroid", "--", "/system/bin/sh", "reboot"]
         logging.info("Stopping Waydroid")
         logging.info("Manually start Waydroid again.")
-
-
-class WaydroidFreezeUnfreeze:
-    def __init__(self, session) -> None:
-        self._session = session
-
-    def __enter__(self):
-        if self._frozen:
-            WaydroidContainerDbus().Unfreeze()
-
-    def __exit__(self, exc_type, exc_value, traceback):
-        if self._frozen:
-            WaydroidContainerDbus().Freeze()
-
-    @property
-    def _frozen(self):
-        if self._session:
-            return self._session["state"] == "FROZEN"
-        else:
-            return False
 
 
 def mount_system():
@@ -266,154 +236,18 @@ def mount_system():
 def umount_system():
     mounted = os.path.ismount(OVERLAY)
     while mounted:
-        try:
-            subprocess.run(["umount", OVERLAY],
-                           stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        except subprocess.CalledProcessError as exc:
-            pass
-        mounted = os.path.ismount(OVERLAY)
-        time.sleep(1)
+        with contextlib.suppress(subprocess.CalledProcessError):
+            subprocess.run(
+                ["umount", OVERLAY],
+                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    mounted = os.path.ismount(OVERLAY)
+    time.sleep(1)
 
 
-def install(arch, bits, magisk_url, workdir=None, restart_after=True, with_manager=False):
-    is_root = check_root()
-    if not is_root:
-        logging.error("This command needs to be ran as a priviliged user!")
-        return
-    if is_installed():
-        logging.error("Magisk Delta already installed!")
-        return
-    if not has_overlay():
-        waydroid_session = get_waydroid_session()
-        if waydroid_session:
-            stop_session_if_needed()
-        mount = mount_system()
-        if not mount:
-            logging.error(
-                "Failed to mount rootfs. Make sure Waydroid is stopped during the installation.")
-            return
-    if workdir:
-        if not os.path.exists(workdir):
-            os.makedirs(workdir)
-    with tempfile.TemporaryDirectory(dir=workdir) as tempdir:
-        logging.info("Downloading Magisk Delta")
-        download_obj(magisk_url, tempdir, "magisk-delta.apk")
-        logging.info("Extracting Magisk Delta")
-        with zipfile.ZipFile(os.path.join(tempdir, "magisk-delta.apk")) as handle:
-            handle.extractall(tempdir)
-        logging.info("Installing Magisk Delta")
-        libs = os.path.join(tempdir, "lib", arch)
-        if not os.path.exists(MAGISK_OVERLAY):
-            os.makedirs(MAGISK_OVERLAY)
-        for lib in os.listdir(libs):
-            shutil.copyfile(os.path.join(libs, lib), os.path.join(
-                MAGISK_OVERLAY, re.match("lib(.*)\.so", lib).group(1)))
-            os.chmod(os.path.join(MAGISK_OVERLAY, re.match(
-                "lib(.*)\.so", lib).group(1)), 0o775)
-        if bits == 64:
-            if arch == "arm64-v8a":
-                magisk32 = os.path.join(tempdir, "lib", "armeabi-v7a", "libmagisk32.so")
-            elif arch == "x86_64": 
-                magisk32 = os.path.join(tempdir, "lib", "x86", "libmagisk32.so")
-            shutil.copyfile(magisk32, os.path.join(MAGISK_OVERLAY, "magisk32"))
-            os.chmod(os.path.join(MAGISK_OVERLAY, "magisk32"), 0o775)
-        assets = os.path.join(tempdir, "assets")
-        extra_copy = ["util_functions.sh", "addon.d.sh", "boot_patch.sh"]
-        for extra in extra_copy:
-            shutil.copyfile(os.path.join(assets, extra),
-                            os.path.join(MAGISK_OVERLAY, extra))
-        if with_manager:
-            shutil.copyfile(os.path.join(tempdir, "magisk-delta.apk"),
-                            os.path.join(MAGISK_OVERLAY, "magisk.apk"))
+# Manager
 
-        logging.info("Creating bootanim.rc")
-        with open(os.path.join(INIT_OVERLAY, "bootanim.rc"), "w+") as handle:
-            handle.write("service bootanim /system/bin/bootanimation\n")
-            handle.write("\tclass core animation\n")
-            handle.write("\tuser graphics\n")
-            handle.write("\tgroup graphics audio\n")
-            handle.write("\tdisabled\n")
-            handle.write("\toneshot\n")
-            handle.write("\tioprio rt 0\n")
-            handle.write("\ttask_profiles MaxPerformance\n")
-            handle.write("\n")
-        logging.info("Backup bootanim.rc")
-        with open(os.path.join(INIT_OVERLAY, "bootanim.rc"), "rb") as handle:
-            with gzip.open(os.path.join(INIT_OVERLAY, "bootanim.rc.gz"), "wb") as ghandle:
-                ghandle.writelines(handle)
-        # Patch bootanim.rc
-        with open(os.path.join(INIT_OVERLAY, "bootanim.rc"), "a") as handle:
-            handle.write("\n")
-            handle.write("on post-fs-data\n")
-            handle.write("\tstart logd\n")
-            handle.write(
-                "\texec u:r:su:s0 root root -- /system/etc/init/magisk/magisk%s --auto-selinux --setup-sbin /system/etc/init/magisk\n" % str(bits))
-            handle.write(
-                "\texec u:r:su:s0 root root -- /system/etc/init/magisk/magiskpolicy --live --magisk \"allow * magisk_file lnk_file *\"\n")
-            handle.write("\tmkdir /sbin/.magisk 700\n")
-            handle.write("\tmkdir /sbin/.magisk/mirror 700\n")
-            handle.write("\tmkdir /sbin/.magisk/block 700\n")
-            handle.write(
-                "\tcopy /system/etc/init/magisk/config /sbin/.magisk/config\n")
-            handle.write("\trm /dev/.magisk_unblock\n")
-            x = ''.join(random.choice(string.ascii_letters + string.digits)
-                        for i in range(15))
-            y = ''.join(random.choice(string.ascii_letters + string.digits)
-                        for i in range(15))
-            handle.write("\tstart %s\n" % x)
-            handle.write("\twait /dev/.magisk_unblock 40\n")
-            handle.write("\trm /dev/.magisk_unblock\n")
-            handle.write("\n\n")
-
-            handle.write(
-                "service %s /sbin/magisk --auto-selinux --post-fs-data\n" % x)
-            handle.write("\tuser root\n")
-            handle.write("\tseclabel u:r:su:s0\n")
-            handle.write("\toneshot\n")
-            handle.write("\n\n")
-
-            handle.write(
-                "service %s /sbin/magisk --auto-selinux --service\n" % y)
-            handle.write("\tclass late_start\n")
-            handle.write("\tuser root\n")
-            handle.write("\tseclabel u:r:su:s0\n")
-            handle.write("\toneshot\n")
-            handle.write("\n\n")
-
-            handle.write("on property:sys.boot_completed=1\n")
-            handle.write("\tmkdir /data/adb/magisk 755\n")
-            handle.write(
-                "\texec u:r:su:s0 root root -- /sbin/magisk --auto-selinux --boot-complete\n")
-            handle.write("\n\n")
-
-            handle.write("on property:init.svc.zygote=restarting\n")
-            handle.write(
-                "\texec u:r:su:s0 root root -- /sbin/magisk --auto-selinux --zygote-restart")
-            handle.write("\n\n")
-
-            handle.write("on property:init.svc.zygote=stopped\n")
-            handle.write(
-                "\texec u:r:su:s0 root root -- /sbin/magisk --auto-selinux --zygote-restart")
-            handle.write("\n")
-
-            logging.info("Finishing installation")
-            if not os.path.exists(os.path.join(OVERLAY, "sbin")):
-                os.makedirs(os.path.join(OVERLAY, "sbin"))
-            if not os.path.exists(os.path.join(OVERLAY, "system/addon.d")):
-                os.makedirs(os.path.join(OVERLAY, "system/addon.d"))
-        if not has_overlay():
-            umount_system()
-        if restart_after:
-            restart_session_if_needed()
-        logging.info("Done")
-        logging.info(
-            "Run waydroid_magisk setup after waydroid starts again or install Magisk Delta Manager")
-        return True
-
-
-def setup():
-    is_root = check_root()
-    if not is_root:
+def su(args=None, pipe=True):
+    if not is_root():
         logging.error("This command needs to be ran as a priviliged user!")
         return
     if not is_running():
@@ -422,18 +256,203 @@ def setup():
     if not is_installed():
         logging.error("Magisk Delta is not installed")
         return
-    su(["rm", "-rf", "/data/adb/magisk"])
-    su(["mkdir", "-p", "/data/adb/magisk"])
-    su(["chmod", "700", "/data/adb"])
-    su(["cp", "/system/etc/init/magisk/*", "/data/adb/magisk"])
-    su(["chmod", "-R", "755", "/data/adb/magisk/"])
-    su(["chown", "-R", "0:0", "/data/adb/magisk"])
-    restart_session_if_needed()
+    result = ""
+    waydroid_session = get_waydroid_session()
+    with WaydroidFreezeUnfreeze(waydroid_session):
+        lxc = os.path.join(WAYDROID_DIR, "lxc")
+        command = [
+            "lxc-attach", "-P", lxc, "-n", "waydroid", "--", "su", "-c",
+            "mknod", "-m", "666", "/dev/tty", "c", "5", "0", "2>", "/dev/null"]
+        subprocess.run(
+            command,
+            env={"PATH": os.environ['PATH'] + ":/system/bin:/vendor/bin"})
+        command = ["lxc-attach", "-P", lxc, "-n", "waydroid", "--", "su"]
+        if args:
+            command.append("-c")
+            command.extend(args)
+        if not args:
+            subprocess.run(
+                command,
+                env={"PATH": os.environ['PATH'] + ":/system/bin:/vendor/bin"})
+        else:
+            proc = subprocess.run(
+                command,
+                env={"PATH": os.environ['PATH'] + ":/system/bin:/vendor/bin"},
+                stdout=subprocess.PIPE if pipe else None,
+                stderr=subprocess.DEVNULL)
+            if proc.stdout:
+                result = proc.stdout.decode()
+    return result
+
+
+def magisk_cmd(args, pipe=True):
+    pipe = subprocess.PIPE if pipe else None
+
+    status = 0
+    result = ""
+    if not is_root():
+        logging.error("This command needs to be ran as a priviliged user!")
+        return
+    if not is_running():
+        logging.error("Waydroid session is not running")
+        return
+    if not is_installed():
+        logging.error("Magisk Delta is not installed")
+        return
+    waydroid_session = get_waydroid_session()
+    with WaydroidFreezeUnfreeze(waydroid_session):
+        lxc = os.path.join(WAYDROID_DIR, "lxc")
+        command = ["lxc-attach", "-P", lxc, "-n",
+                   "waydroid", "--", "/sbin/magisk"]
+        command.extend(args)
+        proc = subprocess.run(
+            command,
+            env={"PATH": os.environ['PATH'] + ":/system/bin:/vendor/bin"},
+            stderr=pipe, stdout=pipe)
+        if proc.stdout:
+            status = 0
+            result = proc.stdout.decode()
+        elif proc.stderr:
+            status = 1
+            result = proc.stderr.decode()
+    return (status, result)
+
+
+def magisk_sqlite(query):
+    if not is_root():
+        logging.error("This command needs to be ran as a priviliged user!")
+        return
+    if not is_running():
+        logging.error("Waydroid session is not running")
+        return
+    if not is_installed():
+        logging.error("Magisk Delta is not installed")
+        return
+    result = ""
+    waydroid_session = get_waydroid_session()
+    with WaydroidFreezeUnfreeze(waydroid_session):
+        lxc = os.path.join(WAYDROID_DIR, "lxc")
+        command = ["lxc-attach", "-P", lxc, "-n", "waydroid",
+                   "--", "/sbin/magisk", "--sqlite", query]
+        proc = subprocess.run(
+            command,
+            env={"PATH": os.environ['PATH'] + ":/system/bin:/vendor/bin"},
+            universal_newlines=False, stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL)
+        result = proc.stdout.decode()
+    return result
+
+
+def list_modules():
+    if not is_root():
+        logging.error("This command needs to be ran as a priviliged user!")
+        return
+    if not is_running():
+        logging.error("Waydroid session is not running")
+        return
+    if not is_installed():
+        logging.error("Magisk Delta is not installed")
+        return
+    waydroid_session = get_waydroid_session()
+    with WaydroidFreezeUnfreeze(waydroid_session):
+        modpath = os.path.join(
+            xdg_data_home(), "waydroid", "data", "adb", "modules")
+        if not os.path.isdir(modpath):
+            logging.error("No Magisk modules are currently installed")
+            return
+        print("\n".join("- %s" % mod for mod in os.listdir(modpath)))
+
+
+def remove_module(modname):
+    if not is_root():
+        logging.error("This command needs to be ran as a priviliged user!")
+        return
+    if not is_running():
+        logging.error("Waydroid session is not running")
+        return
+    if not is_installed():
+        logging.error("Magisk Delta is not installed")
+        return
+    waydroid_session = get_waydroid_session()
+    with WaydroidFreezeUnfreeze(waydroid_session):
+        modpath = os.path.join(
+            xdg_data_home(), "waydroid", "data", "adb", "modules")
+        if not os.path.isdir(os.path.join(modpath, modname)):
+            logging.error("'%s' is not an installed Magisk module" % modname)
+            return
+        logging.info("Removing '%s' Magisk module" % modname)
+        while os.path.isdir(os.path.join(modpath, modname)):
+            shutil.rmtree(os.path.join(modpath, modname))
+        logging.info("'%s' Magisk module has been removed" % modname)
+        restart_session_if_needed()
+
+
+def get_package(query):
+    name = ""
+    app_id = 0
+    result = su(["pm", "list", "packages -U", "|", "grep", str(query)])
+    if result:
+        name, app_id = result.split()
+        name = name.split(":")[-1]
+        app_id = int(app_id.split(":")[-1])
+    return (name, app_id)
+
+
+def magisk_log(save=False):
+    if not is_root():
+        logging.error("This command needs to be ran as a priviliged user!")
+        return
+    if not is_running():
+        logging.error("Waydroid session is not running")
+        return
+    if not is_installed():
+        logging.error("Magisk Delta is not installed")
+        return
+    if not save:
+        su(["tail", "-f", "/cache/magisk.log"], False)
+    else:
+        save_to = os.path.join(xdg_data_home(),
+                               "waydroid_magisk", "magisk_log_%s.log" %
+                               datetime.datetime.now().strftime(
+                                   "%Y-%m-%d_%H:%M:%S"))
+        if not os.path.isdir(os.path.basename(save_to)):
+            os.makedirs(os.path.basename(save_to))
+        with open(save_to, "w") as out:
+            if (
+                os.path.isdir("/sys/fs/selinux")
+                and len(os.listdir("/sys/fs/selinux")) > 0
+            ):
+                out.write(
+                    "!!!!!! If you're seeing this you're running with SELinux enabled which shouldn't work on Waydroid !!!!!!\n\n")
+            out.write("---Detected Device Info---\n\n")
+            out.write("isAB=false\n")
+            out.write("isSAR=false\n")
+            out.write("ramdisk=true\n")
+            uname = os.uname()
+            out.write("kernel=%s %s %s %s\n" % (uname.sysname,
+                      uname.machine, uname.release, uname.version))
+            proc = subprocess.run(
+                ["waydroid", "--version"],
+                stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+            out.write("waydroid arch=%s\n" % get_arch()[0])
+            out.write("waydroid version=%s" % proc.stdout.decode())
+
+            out.write("\n\n---System Properties---\n\n")
+            out.write(su(["getprop"]))
+
+            out.write("\n\n---Environment Variables---\n\n")
+            out.write(su(["env"]))
+
+            out.write("\n\n---System MountInfo---\n\n")
+            out.write(su(["cat", "/proc/self/mountinfo"]))
+
+            out.write("\n---Manager Logs---\n")
+            out.write(su("cat", "/cache/magisk.log"))
+            logging.info("Logs saved to: %s" % save_to)
 
 
 def magisk_status():
-    is_root = check_root()
-    if not is_root:
+    if not is_root():
         logging.error("This command needs to be ran as a priviliged user!")
         return
     if not is_running():
@@ -452,9 +471,287 @@ def magisk_status():
     logging.info("Magisk Version: %s" % su(["magisk", "su", "--version"]))
 
 
+def install_module(modpath):
+    if not is_root():
+        logging.error("This command needs to be ran as a priviliged user!")
+        return
+    if not is_running():
+        logging.error("Waydroid session is not running")
+        return
+    if not is_installed():
+        logging.error("Magisk Delta is not installed")
+        return
+    waydroid_session = get_waydroid_session()
+    tmpdir = os.path.join(xdg_data_home(), "waydroid",
+                          "data", "adb", "magisk_tmp")
+    if not os.path.exists(tmpdir):
+        os.makedirs(tmpdir)
+    shutil.copyfile(modpath, os.path.join(tmpdir, "module.zip"))
+    args = ["--install-module",
+            os.path.join("/data", "adb", "magisk_tmp", "module.zip")]
+    magisk_cmd(args, pipe=False)
+    os.remove(os.path.join(tmpdir, "module.zip"))
+    restart_session_if_needed()
+
+
+def list_modules():
+    if not is_root():
+        logging.error("This command needs to be ran as a priviliged user!")
+        return
+    if not is_running():
+        logging.error("Waydroid session is not running")
+        return
+    if not is_installed():
+        logging.error("Magisk Delta is not installed")
+        return
+    waydroid_session = get_waydroid_session()
+    with WaydroidFreezeUnfreeze(waydroid_session):
+        modpath = os.path.join(
+            xdg_data_home(), "waydroid", "data", "adb", "modules")
+        if not os.path.isdir(modpath):
+            logging.error("No Magisk modules are currently installed")
+            return
+        print("\n".join("- %s" % mod for mod in os.listdir(modpath)))
+
+
+def remove_module(modname):
+    if not is_root():
+        logging.error("This command needs to be ran as a priviliged user!")
+        return
+    if not is_running():
+        logging.error("Waydroid session is not running")
+        return
+    if not is_installed():
+        logging.error("Magisk Delta is not installed")
+        return
+    waydroid_session = get_waydroid_session()
+    with WaydroidFreezeUnfreeze(waydroid_session):
+        modpath = os.path.join(
+            xdg_data_home(), "waydroid", "data", "adb", "modules")
+        if not os.path.isdir(os.path.join(modpath, modname)):
+            logging.error("'%s' is not an installed Magisk module" % modname)
+            return
+        logging.info("Removing '%s' Magisk module" % modname)
+        while os.path.isdir(os.path.join(modpath, modname)):
+            shutil.rmtree(os.path.join(modpath, modname))
+        logging.info("'%s' Magisk module has been removed" % modname)
+        restart_session_if_needed()
+
+
+# Installer
+
+def is_installed():
+    overlay_magisk = os.path.join(
+        WAYDROID_DIR, "overlay/system/etc/init/magisk")
+    rootfs_magisk = os.path.join(WAYDROID_DIR, "rootfs/system/etc/init/magisk")
+    installed = os.path.exists(overlay_magisk)
+    if not has_overlay():
+        if len(os.listdir(os.path.join(WAYDROID_DIR, "rootfs"))) > 0:
+            installed = os.path.exists(rootfs_magisk)
+        else:
+            mount_system()
+            installed = os.path.exists(overlay_magisk)
+            umount_system()
+    return installed
+
+
+def is_set_up():
+    magisk_init = os.path.join(
+        MAGISK_OVERLAY, "magisk%s" % get_arch()[-1])
+    if not has_overlay():
+        magisk_init = os.path.join(
+            WAYDROID_DIR, "rootfs", "system", "etc", "init", "magisk",
+            "magisk%s" % get_arch()[-1])
+    magisk_data = os.path.join(xdg_data_home(
+    ), "waydroid", "data", "adb", "magisk", "magisk%s" % get_arch()[-1])
+    return os.path.exists(magisk_data) and filecmp.cmp(
+        magisk_init, magisk_data, shallow=False)
+
+
+def backup_bootanim():
+    logging.info("Backing up bootanim.rc")
+    with open(os.path.join(INIT_OVERLAY, "bootanim.rc"), "w+") as handle:
+        handle.write("service bootanim /system/bin/bootanimation\n")
+        handle.write("\tclass core animation\n")
+        handle.write("\tuser graphics\n")
+        handle.write("\tgroup graphics audio\n")
+        handle.write("\tdisabled\n")
+        handle.write("\toneshot\n")
+        handle.write("\tioprio rt 0\n")
+        handle.write("\ttask_profiles MaxPerformance\n")
+        handle.write("\n")
+    with open(os.path.join(INIT_OVERLAY, "bootanim.rc"), "rb") as handle:
+        with gzip.open(os.path.join(INIT_OVERLAY, "bootanim.rc.gz"), "wb") as ghandle:
+            ghandle.writelines(handle)
+
+
+def patch_bootanim(bits):
+    logging.info("Patching bootanim.rc")
+
+    x = ''.join(
+        random.choice(string.ascii_letters + string.digits)
+        for _ in range(15)
+    )
+    y = ''.join(
+        random.choice(string.ascii_letters + string.digits)
+        for _ in range(15)
+    )
+
+    with open(os.path.join(INIT_OVERLAY, "bootanim.rc"), "a") as handle:
+        handle.write("\n")
+        handle.write("on post-fs-data\n")
+        handle.write("\tstart logd\n")
+        handle.write(
+            "\texec u:r:su:s0 root root -- /system/etc/init/magisk/magisk%s --auto-selinux --setup-sbin /system/etc/init/magisk\n" % str(bits))
+        handle.write(
+            "\texec u:r:su:s0 root root -- /system/etc/init/magisk/magiskpolicy --live --magisk \"allow * magisk_file lnk_file *\"\n")
+        handle.write("\tmkdir /sbin/.magisk 700\n")
+        handle.write("\tmkdir /sbin/.magisk/mirror 700\n")
+        handle.write("\tmkdir /sbin/.magisk/block 700\n")
+        handle.write(
+            "\tcopy /system/etc/init/magisk/config /sbin/.magisk/config\n")
+        handle.write("\trm /dev/.magisk_unblock\n")
+        handle.write("\tstart %s\n" % x)
+        handle.write("\twait /dev/.magisk_unblock 40\n")
+        handle.write("\trm /dev/.magisk_unblock\n")
+        handle.write("\n\n")
+
+        handle.write(
+            "service %s /sbin/magisk --auto-selinux --post-fs-data\n" % x)
+        handle.write("\tuser root\n")
+        handle.write("\tseclabel u:r:su:s0\n")
+        handle.write("\toneshot\n")
+        handle.write("\n\n")
+
+        handle.write(
+            "service %s /sbin/magisk --auto-selinux --service\n" % y)
+        handle.write("\tclass late_start\n")
+        handle.write("\tuser root\n")
+        handle.write("\tseclabel u:r:su:s0\n")
+        handle.write("\toneshot\n")
+        handle.write("\n\n")
+
+        handle.write("on property:sys.boot_completed=1\n")
+        handle.write("\tmkdir /data/adb/magisk 755\n")
+        handle.write(
+            "\texec u:r:su:s0 root root -- /sbin/magisk --auto-selinux --boot-complete\n")
+        handle.write("\n\n")
+
+        handle.write("on property:init.svc.zygote=restarting\n")
+        handle.write(
+            "\texec u:r:su:s0 root root -- /sbin/magisk --auto-selinux --zygote-restart")
+        handle.write("\n\n")
+
+        handle.write("on property:init.svc.zygote=stopped\n")
+        handle.write(
+            "\texec u:r:su:s0 root root -- /sbin/magisk --auto-selinux --zygote-restart")
+        handle.write("\n")
+
+
+def install(arch, bits, magisk_url, workdir=None,
+            restart_after=True, with_manager=False):
+    if not is_root():
+        logging.error("This command needs to be ran as a priviliged user!")
+        return
+    if is_installed():
+        logging.error("Magisk Delta already installed!")
+        return
+    if not has_overlay():
+        waydroid_session = get_waydroid_session()
+        if waydroid_session:
+            stop_session_if_needed()
+        mount = mount_system()
+        if not mount:
+            logging.error(
+                "Failed to mount rootfs. Make sure Waydroid is stopped during the installation.")
+            return
+    if workdir and not os.path.exists(workdir):
+        os.makedirs(workdir)
+    with tempfile.TemporaryDirectory(dir=workdir) as tempdir:
+        logging.info("Downloading Magisk Delta")
+        download_obj(magisk_url, tempdir, "magisk-delta.apk")
+        logging.info("Extracting Magisk Delta")
+        with zipfile.ZipFile(os.path.join(tempdir, "magisk-delta.apk")) as handle:
+            handle.extractall(tempdir)
+        logging.info("Installing Magisk Delta")
+        libs = os.path.join(tempdir, "lib", arch)
+        if not os.path.exists(MAGISK_OVERLAY):
+            os.makedirs(MAGISK_OVERLAY)
+        for lib in os.listdir(libs):
+            shutil.copyfile(
+                os.path.join(libs, lib),
+                os.path.join(MAGISK_OVERLAY, re.match("lib(.*)\\.so", lib)[1]),
+            )
+            os.chmod(
+                os.path.join(MAGISK_OVERLAY, re.match("lib(.*)\\.so", lib)[1]),
+                0o775,
+            )
+        if bits == 64:
+            if arch == "arm64-v8a":
+                magisk32 = os.path.join(
+                    tempdir, "lib", "armeabi-v7a", "libmagisk32.so")
+            elif arch == "x86_64":
+                magisk32 = os.path.join(
+                    tempdir, "lib", "x86", "libmagisk32.so")
+            shutil.copyfile(magisk32, os.path.join(MAGISK_OVERLAY, "magisk32"))
+            os.chmod(os.path.join(MAGISK_OVERLAY, "magisk32"), 0o775)
+        assets = os.path.join(tempdir, "assets")
+        extra_copy = ["util_functions.sh", "addon.d.sh", "boot_patch.sh"]
+        for extra in extra_copy:
+            shutil.copyfile(os.path.join(assets, extra),
+                            os.path.join(MAGISK_OVERLAY, extra))
+        if with_manager:
+            shutil.copyfile(os.path.join(tempdir, "magisk-delta.apk"),
+                            os.path.join(MAGISK_OVERLAY, "magisk.apk"))
+
+        backup_bootanim()
+        patch_bootanim(bits)
+        logging.info("Finishing installation")
+        if not os.path.exists(os.path.join(OVERLAY, "sbin")):
+            os.makedirs(os.path.join(OVERLAY, "sbin"))
+        if not os.path.exists(os.path.join(OVERLAY, "system/addon.d")):
+            os.makedirs(os.path.join(OVERLAY, "system/addon.d"))
+    if not has_overlay():
+        umount_system()
+    if restart_after:
+        restart_session_if_needed()
+    logging.info("Done")
+    logging.info(
+        "Run waydroid_magisk setup after waydroid starts again or install Magisk Delta Manager")
+
+
+def update(arch, bits, magisk_url, restart_after=False,
+           workdir=None, with_manager=False):
+    uninstalled = uninstall(restart_after=False)
+    if uninstalled:
+        installed = install(arch, bits, magisk_url=magisk_url,
+                            workdir=workdir, with_manager=with_manager)
+        if installed:
+            logging.info(
+                "Manually update Magisk Manager after booting Waydroid.")
+
+
+def setup():
+    if not is_root():
+        logging.error("This command needs to be ran as a priviliged user!")
+        return
+    if not is_running():
+        logging.error("Waydroid session is not running")
+        return
+    if not is_installed():
+        logging.error("Magisk Delta is not installed")
+        return
+    su(["rm", "-rf", "/data/adb/magisk"])
+    su(["mkdir", "-p", "/data/adb/magisk"])
+    su(["chmod", "700", "/data/adb"])
+    su(["cp", "/system/etc/init/magisk/*", "/data/adb/magisk"])
+    su(["chmod", "-R", "755", "/data/adb/magisk/"])
+    su(["chown", "-R", "0:0", "/data/adb/magisk"])
+    restart_session_if_needed()
+
+
 def uninstall(restart_after=True):
-    is_root = check_root()
-    if not is_root:
+    if not is_root():
         logging.error("This command needs to be ran as a priviliged user!")
         return
     if not is_installed():
@@ -478,7 +775,7 @@ def uninstall(restart_after=True):
                 shutil.rmtree(file)
             else:
                 os.remove(file)
-        file = re.sub("overlay_rw\/system\/", "overlay/", file)
+        file = re.sub("overlay_rw\\/system\\/", "overlay/", file)
         if os.path.exists(file):
             if os.path.isdir(file):
                 shutil.rmtree(file)
@@ -521,66 +818,11 @@ def uninstall(restart_after=True):
     return True
 
 
-def update(arch, bits, magisk_url, restart_after=False, workdir=None, with_manager=False):
-    uninstalled = uninstall(restart_after=False)
-    if uninstalled:
-        installed = install(arch, bits, magisk_url=magisk_url, workdir=workdir, with_manager=with_manager)
-        if installed:
-            logging.info(
-                "Manually update Magisk Manager after booting Waydroid.")
-
-
-def magisk_log(save=False):
-    is_root = check_root()
-    if not is_root:
-        logging.error("This command needs to be ran as a priviliged user!")
-        return
-    if not is_running():
-        logging.error("Waydroid session is not running")
-        return
-    if not is_installed():
-        logging.error("Magisk Delta is not installed")
-        return
-    if not save:
-        su(["tail", "-f", "/cache/magisk.log"], False)
-    else:
-        save_to = os.path.join(xdg_data_home(), "waydroid_magisk", "magisk_log_%s.log" %
-                               datetime.datetime.now().strftime("%Y-%m-%d_%H:%M:%S"))
-        if not os.path.isdir(os.path.basename(save_to)):
-            os.makedirs(os.path.basename(save_to))
-        with open(save_to, "w") as out:
-            if os.path.isdir("/sys/fs/selinux"):
-                if len(os.listdir("/sys/fs/selinux")) > 0:
-                    out.write(
-                        "!!!!!! If you're seeing this you're running with SELinux enabled which shouldn't work on Waydroid !!!!!!\n\n")
-            out.write("---Detected Device Info---\n\n")
-            out.write("isAB=false\n")
-            out.write("isSAR=false\n")
-            out.write("ramdisk=true\n")
-            uname = os.uname()
-            out.write("kernel=%s %s %s %s\n" % (uname.sysname,
-                      uname.machine, uname.release, uname.version))
-            proc = subprocess.run(
-                ["waydroid", "--version"], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
-            out.write("waydroid arch=%s\n" % get_arch()[0])
-            out.write("waydroid version=%s" % proc.stdout.decode())
-
-            out.write("\n\n---System Properties---\n\n")
-            out.write(su(["getprop"]))
-
-            out.write("\n\n---Environment Variables---\n\n")
-            out.write(su(["env"]))
-
-            out.write("\n\n---System MountInfo---\n\n")
-            out.write(su(["cat", "/proc/self/mountinfo"]))
-
-            out.write("\n---Manager Logs---\n")
-            out.write(su("cat", "/cache/magisk.log"))
-            logging.info("Logs saved to: %s" % save_to)
-
+# OTA
 
 def ota():
-    # TODO: Clean this mess I wrote a few days ago when I feel like. And maybe try to find a better way to manage this.
+    # TODO: Clean this mess I wrote a few days ago when I feel like. And maybe
+    # try to find a better way to manage this.
     def copy(source):
         logging.info("Copying Magisk File: %s" % os.path.basename(source))
         dest = source.replace("overlay_rw/system/", "overlay/")
@@ -597,7 +839,7 @@ def ota():
     def remove(source):
         logging.info("Removing Magisk Delta File '%s'" %
                      os.path.basename(source))
-        dest = re.sub("overlay_rw\/system\/", "overlay/", source)
+        dest = re.sub("overlay_rw\\/system\\/", "overlay/", source)
         if os.path.exists(dest):
             if os.path.isdir(dest):
                 shutil.rmtree(dest)
@@ -619,180 +861,15 @@ def ota():
             else:
                 for mfile in MAGISK_FILES:
                     overlay = mfile.replace("overlay_rw/system/", "overlay/")
-                    if os.path.exists(mfile) and os.path.exists(overlay):
-                        if not filecmp.cmp(mfile, overlay):
-                            copy(mfile)
+                    if (
+                        os.path.exists(mfile)
+                        and os.path.exists(overlay)
+                        and not filecmp.cmp(mfile, overlay)
+                    ):
+                        copy(mfile)
                     if os.path.exists(mfile) and not os.path.exists(overlay):
                         copy(mfile)
         time.sleep(1)
-
-
-def magisk_cmd(args, pipe=True):
-    pipe = subprocess.PIPE if pipe else None
-    is_root = check_root()
-    status = 0
-    result = ""
-    if not is_root:
-        logging.error("This command needs to be ran as a priviliged user!")
-        return
-    if not is_running():
-        logging.error("Waydroid session is not running")
-        return
-    if not is_installed():
-        logging.error("Magisk Delta is not installed")
-        return
-    waydroid_session = get_waydroid_session()
-    with WaydroidFreezeUnfreeze(waydroid_session):
-        lxc = os.path.join(WAYDROID_DIR, "lxc")
-        command = ["lxc-attach", "-P", lxc, "-n",
-                   "waydroid", "--", "/sbin/magisk"]
-        command.extend(args)
-        proc = subprocess.run(command, env={
-                              "PATH": os.environ['PATH'] + ":/system/bin:/vendor/bin"}, stderr=pipe, stdout=pipe)
-        if proc.stdout:
-            status = 0
-            result = proc.stdout.decode()
-        elif proc.stderr:
-            status = 1
-            result = proc.stderr.decode()
-    return (status, result)
-
-
-def magisk_sqlite(query):
-    is_root = check_root()
-    if not is_root:
-        logging.error("This command needs to be ran as a priviliged user!")
-        return
-    if not is_running():
-        logging.error("Waydroid session is not running")
-        return
-    if not is_installed():
-        logging.error("Magisk Delta is not installed")
-        return
-    result = ""
-    waydroid_session = get_waydroid_session()
-    with WaydroidFreezeUnfreeze(waydroid_session):
-        lxc = os.path.join(WAYDROID_DIR, "lxc")
-        command = ["lxc-attach", "-P", lxc, "-n", "waydroid",
-                   "--", "/sbin/magisk", "--sqlite", query]
-        proc = subprocess.run(command, env={"PATH": os.environ['PATH'] + ":/system/bin:/vendor/bin"}, universal_newlines=False, stdout=subprocess.PIPE,
-                              stderr=subprocess.DEVNULL)
-        result = proc.stdout.decode()
-    return result
-
-
-def install_module(modpath):
-    is_root = check_root()
-    if not is_root:
-        logging.error("This command needs to be ran as a priviliged user!")
-        return
-    if not is_running():
-        logging.error("Waydroid session is not running")
-        return
-    if not is_installed():
-        logging.error("Magisk Delta is not installed")
-        return
-    waydroid_session = get_waydroid_session()
-    tmpdir = os.path.join(xdg_data_home(), "waydroid", "data", "adb", "magisk_tmp")
-    if not os.path.exists(tmpdir):
-        os.makedirs(tmpdir)
-    shutil.copyfile(modpath, os.path.join(tmpdir, "module.zip"))
-    args = ["--install-module",
-            os.path.join("/data", "adb", "magisk_tmp", "module.zip")]
-    magisk_cmd(args, pipe=False)
-    os.remove(os.path.join(tmpdir, "module.zip"))
-    restart_session_if_needed()
-
-
-def list_modules():
-    is_root = check_root()
-    if not is_root:
-        logging.error("This command needs to be ran as a priviliged user!")
-        return
-    if not is_running():
-        logging.error("Waydroid session is not running")
-        return
-    if not is_installed():
-        logging.error("Magisk Delta is not installed")
-        return
-    waydroid_session = get_waydroid_session()
-    with WaydroidFreezeUnfreeze(waydroid_session):
-        modpath = os.path.join(
-            xdg_data_home(), "waydroid", "data", "adb", "modules")
-        if not os.path.isdir(modpath):
-            logging.error("No Magisk modules are currently installed")
-            return
-        print("\n".join("- %s" % mod for mod in os.listdir(modpath)))
-
-
-def remove_module(modname):
-    is_root = check_root()
-    if not is_root:
-        logging.error("This command needs to be ran as a priviliged user!")
-        return
-    if not is_running():
-        logging.error("Waydroid session is not running")
-        return
-    if not is_installed():
-        logging.error("Magisk Delta is not installed")
-        return
-    waydroid_session = get_waydroid_session()
-    with WaydroidFreezeUnfreeze(waydroid_session):
-        modpath = os.path.join(
-            xdg_data_home(), "waydroid", "data", "adb", "modules")
-        if not os.path.isdir(os.path.join(modpath, modname)):
-            logging.error("'%s' is not an installed Magisk module" % modname)
-            return
-        logging.info("Removing '%s' Magisk module" % modname)
-        while os.path.isdir(os.path.join(modpath, modname)):
-            shutil.rmtree(os.path.join(modpath, modname))
-        logging.info("'%s' Magisk module has been removed" % modname)
-        restart_session_if_needed()
-
-
-def su(args=None, pipe=True):
-    is_root = check_root()
-    if not is_root:
-        logging.error("This command needs to be ran as a priviliged user!")
-        return
-    if not is_running():
-        logging.error("Waydroid session is not running")
-        return
-    if not is_installed():
-        logging.error("Magisk Delta is not installed")
-        return
-    result = ""
-    waydroid_session = get_waydroid_session()
-    with WaydroidFreezeUnfreeze(waydroid_session):
-        lxc = os.path.join(WAYDROID_DIR, "lxc")
-        command = ["lxc-attach", "-P", lxc, "-n", "waydroid", "--", "su", "-c",
-                   "mknod",  "-m", "666", "/dev/tty", "c", "5", "0", "2>", "/dev/null"]
-        subprocess.run(
-            command, env={"PATH": os.environ['PATH'] + ":/system/bin:/vendor/bin"})
-        command = ["lxc-attach", "-P", lxc, "-n", "waydroid", "--", "su"]
-        if args:
-            command.append("-c")
-            command.extend(args)
-        if not args:
-            subprocess.run(
-                command, env={"PATH": os.environ['PATH'] + ":/system/bin:/vendor/bin"})
-        else:
-            proc = subprocess.run(command, env={
-                                  "PATH": os.environ['PATH'] + ":/system/bin:/vendor/bin"}, stdout=subprocess.PIPE if pipe else None, stderr=subprocess.DEVNULL)
-            if proc.stdout:
-                result = proc.stdout.decode()
-    return result
-
-
-def get_package(query):
-    name = ""
-    app_id = 0
-    result = su(["pm", "list", "packages -U", "|", "grep", str(query)])
-    if result:
-        name, app_id = result.split()
-        name = name.split(":")[-1]
-        app_id = int(app_id.split(":")[-1])
-    return (name, app_id)
 
 
 def main():
@@ -802,11 +879,13 @@ def main():
     arch, bits = get_arch()
 
     parser = argparse.ArgumentParser(
-        description="Magisk Delta installer and manager for Waydroid", prog="waydroid_magisk")
+        description="Magisk Delta installer and manager for Waydroid",
+        prog="waydroid_magisk")
     parser.add_argument("-v", "--version",
                         action="store_true", help="Print version")
-    parser.add_argument("-o", "--ota", action="store_true",
-                        help="Handles survival during Waydroid updates (overlay only)")
+    parser.add_argument(
+        "-o", "--ota", action="store_true",
+        help="Handles survival during Waydroid updates (overlay only)")
 
     subparsers = parser.add_subparsers(dest="command")
     subparsers.add_parser("status", help="Query Magisk status")
@@ -814,13 +893,18 @@ def main():
         "install", help="Install Magisk Delta in Waydroid")
     parser_install.add_argument(
         "-u", "--update", action="store_true", help="Update Magisk Delta")
-    parser_install.add_argument("-c", "--canary", action="store_true",
-                                help="Install Magisk Delta canary channel (default canary)")
-    parser_install.add_argument("-d", "--debug", action="store_true",
-                                help="Install Magisk Delta debug channel (default canary)")
-    parser_install.add_argument("-t", "--tmpdir", nargs="?", type=str,
-                                default="tmpdir", help="Custom path to use as an temporary  directory")
-    parser_install.add_argument("-m", "--manager", action="store_true", help="Also install Magisk Delta Manager")
+    parser_install.add_argument(
+        "-c", "--canary", action="store_true",
+        help="Install Magisk Delta canary channel (default canary)")
+    parser_install.add_argument(
+        "-d", "--debug", action="store_true",
+        help="Install Magisk Delta debug channel (default canary)")
+    parser_install.add_argument(
+        "-t", "--tmpdir", nargs="?", type=str, default="tmpdir",
+        help="Custom path to use as an temporary  directory")
+    parser_install.add_argument(
+        "-m", "--manager", action="store_true",
+        help="Also install Magisk Delta Manager")
 
     subparsers.add_parser("setup", help="Setup magisk env")
 
@@ -896,15 +980,19 @@ def main():
             "https://raw.githubusercontent.com/nitanmarcel/waydroid-magisk/main/magisk.json")
         magisk_url = magisk_channels["canary"]
         # stable is disabled for now
-        magisk_url = magisk_channels["canary" if args.canary else "debug" if args.debug else "canary"]
+        magisk_url = magisk_channels["canary"
+                                     if args.canary else "debug"
+                                     if args.debug else "canary"]
         install_fnc = install
         if args.update:
             install_fnc = update
         if args.tmpdir == "tmpdir":
-            install_fnc(arch, bits, magisk_url, restart_after=True, with_manager=args.manager)
+            install_fnc(arch, bits, magisk_url, restart_after=True,
+                        with_manager=args.manager)
         else:
-            install_fnc(arch, bits, magisk_url=magisk_url,
-                        workdir=args.tmpdir, restart_after=True, with_manager=args.manager)
+            install_fnc(
+                arch, bits, magisk_url=magisk_url, workdir=args.tmpdir,
+                restart_after=True, with_manager=args.manager)
     elif args.command == "setup":
         setup()
     elif args.command == "remove":
@@ -936,8 +1024,10 @@ def main():
                 pkg, uid = get_package(int(uid.split("=")[-1]))
                 if pkg:
                     print(
-                        "- %s | %s" % (pkg, "allowed" if int(policy.split("=")[-1]) == 2 else "denied"))
-        elif args.command_su == "allow" or args.command_su == "deny":
+                        "- %s | %s" %
+                        (pkg, "allowed"
+                         if int(policy.split("=")[-1]) == 2 else "denied"))
+        elif args.command_su in ["allow", "deny"]:
             policy = "2" if args.command_su == "allow" else "1"
             pkg, app_id = get_package(args.PKG)
             if not app_id:
