@@ -33,7 +33,7 @@ logging.basicConfig(
     level=logging.INFO,
     datefmt="%H:%M:%S")
 
-VERSION = '1.2.6'
+VERSION = '1.2.7'
 
 MAGISK_HOST = "https://huskydg.github.io/magisk-files/"
 MAGISK_CANARY = "%s/app-release.apk" % MAGISK_HOST
@@ -690,10 +690,10 @@ def install(arch, bits, magisk_channel, workdir=None,
         for lib in os.listdir(libs):
             shutil.copyfile(
                 os.path.join(libs, lib),
-                os.path.join(MAGISK_OVERLAY, re.match("lib(.*)\\.so", lib)[1]),
+                os.path.join(MAGISK_OVERLAY, re.match("lib(.*)\\.so", lib).group(1)),
             )
             os.chmod(
-                os.path.join(MAGISK_OVERLAY, re.match("lib(.*)\\.so", lib)[1]),
+                os.path.join(MAGISK_OVERLAY, re.match("lib(.*)\\.so", lib).group(1)),
                 0o775,
             )
         if bits == 64:
