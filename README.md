@@ -19,6 +19,7 @@ Magisk Delta manager for Waydroid.
   - [How is this different from other scripts?](#how-is-this-different-from-other-scripts)
   - [What is Magisk Delta?](#what-is-magisk-delta)
   - [Arch Linux](#arch-linux)
+  - [Ubuntu Touch](#ubuntu-touch)
 - [Credits](#credits)
 
 # Installing Magisk on Waydroid
@@ -94,6 +95,18 @@ Magisk Delta is a fork of the official Magisk Manager with the old Magisk Hide f
 
 ## Arch Linux
 linux-zen does not support Magisk Delta. Whatever, people reported that `linux-xanmod-anbox` with `linux-xanmod-anbox-headers` from chaotic AUR works without any issues.
+
+## Ubuntu Touch
+__`waydroid-magisk` is developed to be compatible with almost every Linux OS, including Ubuntu Touch. But a few issues can still occur such as (workarounds included).__
+* Readonly filesystem/No space left
+  * `sudo waydroid_magisk install --tmpdir /home/phablet/magisk`
+* Failed to re-execute lxc-attach via memory file descriptor
+  * Use waydroid_magisk via adb
+  * or enable ssh `android-gadget-service enable ssh` and ssh to `localhost` (`ssh localhost`)
+* CANNOT LINK EXECUTABLE "service": "/system/lib/libcutils.so" is 32-bit instead of 64-bit
+  * `sudo env LD_LIBRARY_PATH=/android/system/lib64/ waydroid_magisk {command failing here}`
+* Magisk Delta fails to patch SELinux policy.
+  * Use `waydroid_magisk` to update or remove Magisk. 
 
 # Credits
 * [Waydroid Team](github.com/waydroid/waydroid)
