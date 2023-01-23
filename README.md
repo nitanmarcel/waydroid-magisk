@@ -106,7 +106,7 @@ __`waydroid-magisk` is developed to be compatible with almost every Linux OS, in
 * CANNOT LINK EXECUTABLE "service": "/system/lib/libcutils.so" is 32-bit instead of 64-bit
   * `sudo env LD_LIBRARY_PATH=/android/system/lib64/ waydroid_magisk {command failing here}`
 * Magisk Delta fails to patch SELinux policy.
-  * Use `waydroid_magisk` to update or remove Magisk. 
+  * Use `waydroid_magisk` to update and setup Magisk. 
 
 # Credits
 * [Waydroid Team](github.com/waydroid/waydroid)
