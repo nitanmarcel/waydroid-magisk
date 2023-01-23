@@ -678,7 +678,7 @@ def install(arch, bits, magisk_channel, workdir=None,
         magisk = download_json(
             "https://raw.githubusercontent.com/HuskyDG/magisk-files/main/%s.json" % magisk_channel,
             "Magisk Delta channels")
-        logging.info("Downloading Magisk Delta %s" % magisk["magisk"]["version"])
+        logging.info("Downloading Magisk Delta: %s-%s" % (magisk_channel, magisk["magisk"]["version"]))
         download_obj(magisk["magisk"]["link"], tempdir, "magisk-delta.apk")
         logging.info("Extracting Magisk Delta")
         with zipfile.ZipFile(os.path.join(tempdir, "magisk-delta.apk")) as handle:
@@ -902,13 +902,26 @@ def main():
     parser_install = subparsers.add_parser(
         "install", help="Install Magisk Delta in Waydroid")
     parser_install.add_argument(
-        "-u", "--update", action="store_true", help="Update Magisk Delta")
-    parser_install.add_argument(
         "-c", "--canary", action="store_true",
         help="Install Magisk Delta canary channel (default canary)")
     parser_install.add_argument(
         "-d", "--debug", action="store_true",
         help="Install Magisk Delta debug channel (default canary)")
+    parser_install.add_argument(
+        "-t", "--tmpdir", nargs="?", type=str, default="tmpdir",
+        help="Custom path to use as an temporary  directory")
+    parser_install.add_argument(
+        "-m", "--manager", action="store_true",
+        help="Also install Magisk Delta Manager")
+
+    parser_install = subparsers.add_parser(
+        "update", help="Update Magisk Delta in Waydroid")
+    parser_install.add_argument(
+        "-c", "--canary", action="store_true",
+        help="Update Magisk Delta canary channel (default canary)")
+    parser_install.add_argument(
+        "-d", "--debug", action="store_true",
+        help="Update Magisk Delta debug channel (default canary)")
     parser_install.add_argument(
         "-t", "--tmpdir", nargs="?", type=str, default="tmpdir",
         help="Custom path to use as an temporary  directory")
@@ -985,12 +998,10 @@ def main():
 
     if args.command == "status":
         magisk_status()
-    elif args.command == "install":
+    elif args.command == "install" or args.command == "update":
         # stable is disabled for now
         magisk_channel = "canary" if args.canary else "debug" if args.debug else "canary"
-        install_fnc = install
-        if args.update:
-            install_fnc = update
+        install_fnc = update if args.command == "update" else install
         if args.tmpdir == "tmpdir":
             install_fnc(arch, bits, magisk_channel, restart_after=True,
                         with_manager=args.manager)
