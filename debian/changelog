@@ -1,3 +1,9 @@
+waydroid-magisk (1.2.7) bullseye; urgency=medium
+
+  * waydroid_magisk: fix re.match on older python versions; bump version 1.2.7
+
+ -- Marcel Alexandru Nitan <nitan.marcel@protonmail.com>  Mon, 23 Jan 2023 21:17:10 +0200
+
 waydroid-magisk (1.2.6) bullseye; urgency=medium
 
   * waydroid_magisk: refactoring: try to improve code quality
