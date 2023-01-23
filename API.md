@@ -1,5 +1,6 @@
 - [Overview](#overview)
   - [install](#install)
+  - [update](#update)
   - [remove](#remove)
   - [module](#module)
   - [su](#su)
@@ -21,9 +22,22 @@ usage: waydroid_magisk install [-h] [-u] [-c] [-d] [-t [TMPDIR]]
 
 options:
   -h, --help            show this help message and exit
-  -u, --update          Update Magisk Delta
   -c, --canary          Install Magisk Delta canary channel (default canary)
   -d, --debug           Install Magisk Delta debug channel (default canary)
+  -t [TMPDIR], --tmpdir [TMPDIR]
+                        Custom path to use as an temporary directory
+```
+
+## update
+
+* Update Magisk Delta in Waydroid
+```
+usage: waydroid_magisk update [-h] [-c] [-d] [-t [TMPDIR]] [-m]
+
+options:
+  -h, --help            show this help message and exit
+  -c, --canary          Update Magisk Delta canary channel (default canary)
+  -d, --debug           Update Magisk Delta debug channel (default canary)
   -t [TMPDIR], --tmpdir [TMPDIR]
                         Custom path to use as an temporary directory
 ```
