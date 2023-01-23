@@ -1075,11 +1075,9 @@ def main():
         if args.command_zygisk == "status":
             result = magisk_sqlite(
                 "SELECT value FROM settings WHERE key == 'zygisk'")
-            state = False
-            if result:
-                state = bool(int(result.split("=")[-1]))
-                logging.info("Zygisk is %s" %
-                             ("enabled" if state else "disabled"))
+            state = result and int(result.split("=")[-1]) == 1
+            logging.info("Zygisk is %s" %
+                         ("enabled" if state else "disabled"))
         elif args.command_zygisk == "enable":
             magisk_sqlite(
                 "REPLACE INTO settings (key,value) VALUES('zygisk',1)")
