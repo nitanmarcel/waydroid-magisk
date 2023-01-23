@@ -100,21 +100,17 @@ def download_obj(url, destination, filename):
             with open(os.path.join(destination, filename), "wb") as handle:
                 shutil.copyfileobj(response, handle)
     except urllib.error.HTTPError as exc:
-        if exc.code == 404:
-            logging.error("Failed to download %s" % filename)
-            return
-    return True
+        raise ValueError("Failed to download %s: %s" % (filename, exc.code))
 
 
-def download_json(url):
+def download_json(url, scope):
     result = {}
     try:
         with urllib.request.urlopen(url) as response:
             data = response.read()
             result = json.loads(data.decode())
     except urllib.error.HTTPError as exc:
-        if exc.code == 404:
-            logging.error("Failed to download Magisk Delta channel info")
+        raise ValueError("Failed to download %s : %s" % (scope, exc.code))
     return result
 
 
@@ -659,7 +655,7 @@ def patch_bootanim(bits):
         handle.write("\n")
 
 
-def install(arch, bits, magisk_url, workdir=None,
+def install(arch, bits, magisk_channel, workdir=None,
             restart_after=True, with_manager=False):
     if not is_root():
         logging.error("This command needs to be ran as a priviliged user!")
@@ -679,8 +675,11 @@ def install(arch, bits, magisk_url, workdir=None,
     if workdir and not os.path.exists(workdir):
         os.makedirs(workdir)
     with tempfile.TemporaryDirectory(dir=workdir) as tempdir:
-        logging.info("Downloading Magisk Delta")
-        download_obj(magisk_url, tempdir, "magisk-delta.apk")
+        magisk = download_json(
+            "https://raw.githubusercontent.com/HuskyDG/magisk-files/main/%s.json" % magisk_channel,
+            "Magisk Delta channels")
+        logging.info("Downloading Magisk Delta %s" % magisk["magisk"]["version"])
+        download_obj(magisk["magisk"]["link"], tempdir, "magisk-delta.apk")
         logging.info("Extracting Magisk Delta")
         with zipfile.ZipFile(os.path.join(tempdir, "magisk-delta.apk")) as handle:
             handle.extractall(tempdir)
@@ -731,11 +730,11 @@ def install(arch, bits, magisk_url, workdir=None,
         "Run waydroid_magisk setup after waydroid starts again or install Magisk Delta Manager")
 
 
-def update(arch, bits, magisk_url, restart_after=False,
+def update(arch, bits, magisk_channel, restart_after=False,
            workdir=None, with_manager=False):
     uninstalled = uninstall(restart_after=False)
     if uninstalled:
-        installed = install(arch, bits, magisk_url=magisk_url,
+        installed = install(arch, bits, magisk_channel,
                             workdir=workdir, with_manager=with_manager)
         if installed:
             logging.info(
@@ -987,22 +986,17 @@ def main():
     if args.command == "status":
         magisk_status()
     elif args.command == "install":
-        magisk_channels = download_json(
-            "https://raw.githubusercontent.com/nitanmarcel/waydroid-magisk/main/magisk.json")
-        magisk_url = magisk_channels["canary"]
         # stable is disabled for now
-        magisk_url = magisk_channels["canary"
-                                     if args.canary else "debug"
-                                     if args.debug else "canary"]
+        magisk_channel = "canary" if args.canary else "debug" if args.debug else "canary"
         install_fnc = install
         if args.update:
             install_fnc = update
         if args.tmpdir == "tmpdir":
-            install_fnc(arch, bits, magisk_url, restart_after=True,
+            install_fnc(arch, bits, magisk_channel, restart_after=True,
                         with_manager=args.manager)
         else:
             install_fnc(
-                arch, bits, magisk_url=magisk_url, workdir=args.tmpdir,
+                arch, bits, magisk_channel, workdir=args.tmpdir,
                 restart_after=True, with_manager=args.manager)
     elif args.command == "setup":
         setup()
