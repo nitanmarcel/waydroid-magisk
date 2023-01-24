@@ -1,3 +1,15 @@
+waydroid-magisk (1.2.8) bullseye; urgency=medium
+
+  * README: add Ubuntu Touch section
+  * README: [..] to update or remove Magisk phrasing might sound a little aggresive
+  * waydroid_magisk: handle waydroid status better
+  * waydroid_magisk: avoid running with selinux enabled
+  * waydroid_magisk: handle waydroid status better; AGAIN
+  * waydroid_magisk: use context managers to carefully umount system
+  * waydroid_magisk: version 1.2.8
+
+ -- Marcel Alexandru Nitan <nitan.marcel@protonmail.com>  Tue, 24 Jan 2023 22:08:26 +0200
+
 waydroid-magisk (1.2.7) bullseye; urgency=medium
 
   * waydroid_magisk: fix re.match on older python versions; bump version 1.2.7
