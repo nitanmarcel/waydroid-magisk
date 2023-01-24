@@ -115,7 +115,7 @@ def download_json(url, scope):
 
 
 def is_running():
-    return len(os.listdir(os.path.join(WAYDROID_DIR, "rootfs"))) > 0
+    return get_waydroid_session() is not None or os.path.exists(os.path.join(WAYDROID_DIR, "session.cfg"))
 
 
 def is_root():
@@ -219,8 +219,6 @@ def mount_system():
     if not os.path.exists(OVERLAY):
         os.mkdir(OVERLAY)
     rootfs = get_systemimg_path()
-    if len(os.listdir(os.path.join(WAYDROID_DIR, "rootfs"))) > 0:
-        return False
     subprocess.run(["e2fsck", "-y", "-f", rootfs],
                    stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     subprocess.run(["resize2fs", rootfs, "2G"],
