@@ -94,6 +94,53 @@ class WaydroidFreezeUnfreeze:
         return self._session["state"] == "FROZEN" if self._session else False
 
 
+def mount_system():
+    if has_overlay():
+        return True
+    if is_running():
+        return False
+    if not os.path.exists(OVERLAY):
+        os.mkdir(OVERLAY)
+    rootfs = get_systemimg_path()
+    subprocess.run(["e2fsck", "-y", "-f", rootfs],
+                   stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    subprocess.run(["resize2fs", rootfs, "2G"],
+                   stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    tries = 5
+    for x in range(tries):
+        with contextlib.suppress(subprocess.CalledProcessError):
+            subprocess.run(["mount", "-o", "rw,loop", rootfs, OVERLAY],
+                           stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        if os.path.ismount(OVERLAY):
+            return True
+        time.sleep(1)
+    logging.info("Failed to mount waydroid system")
+    return False
+
+
+def umount_system():
+    if has_overlay() or not is_running():
+        return True
+    tries = 5
+    for x in range(tries):
+        with contextlib.suppress(subprocess.CalledProcessError):
+            subprocess.run(
+                ["umount", OVERLAY],
+                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        if not os.path.ismount(OVERLAY):
+            return True
+    time.sleep(1)
+    logging.info("Failed to umount waydroid system")
+    return False
+
+
+class SystemMount:
+    def __enter__(self):
+        return mount_system()
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        umount_system()
+
+
 def download_obj(url, destination, filename):
     try:
         with urllib.request.urlopen(url) as response:
@@ -196,7 +243,7 @@ def _restart_session_if_needed():
     seconds = 5
     if waydroid_session:
         for i in range(seconds):
-            print("Restarting Waydroid in %s (press ^C to cancel)" %
+            logging.info("Restarting Waydroid in %s (press ^C to cancel)" %
                   (seconds - i))
             time.sleep(1)
         logging.info("Stopping Waydroid")
@@ -205,7 +252,7 @@ def _restart_session_if_needed():
         WaydroidContainerDbus().Start(waydroid_session)
     elif is_running():
         for i in range(seconds):
-            print(
+            logging.info(
                 "Stopping Waydroid in %s (press ^C to cancel)" %
                 (seconds - i))
             time.sleep(1)
@@ -215,40 +262,6 @@ def _restart_session_if_needed():
         logging.info("Stopping waydroid")
         subprocess.run(command)
         logging.info("Starting Waydroid")
-
-
-def mount_system():
-    if not os.path.exists(OVERLAY):
-        os.mkdir(OVERLAY)
-    rootfs = get_systemimg_path()
-    subprocess.run(["e2fsck", "-y", "-f", rootfs],
-                   stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-    subprocess.run(["resize2fs", rootfs, "2G"],
-                   stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-    tries = 5
-    for x in range(tries):
-        with contextlib.suppress(subprocess.CalledProcessError):
-            subprocess.run(["mount", "-o", "rw,loop", rootfs, OVERLAY],
-                           stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        if os.path.ismount(OVERLAY):
-            return True
-        time.sleep(1)
-    logging.info("Failed to mount waydroid system")
-    return False
-
-
-def umount_system():
-    tries = 5
-    for x in range(tries):
-        with contextlib.suppress(subprocess.CalledProcessError):
-            subprocess.run(
-                ["umount", OVERLAY],
-                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        if not os.path.ismount(OVERLAY):
-            return True
-    time.sleep(1)
-    logging.info("Failed to umount waydroid system")
-    return False
 
 
 # Manager
@@ -550,16 +563,8 @@ def remove_module(modname):
 def is_installed():
     overlay_magisk = os.path.join(
         WAYDROID_DIR, "overlay/system/etc/init/magisk")
-    rootfs_magisk = os.path.join(WAYDROID_DIR, "rootfs/system/etc/init/magisk")
-    installed = os.path.exists(overlay_magisk)
-    if not has_overlay():
-        if len(os.listdir(os.path.join(WAYDROID_DIR, "rootfs"))) > 0:
-            installed = os.path.exists(rootfs_magisk)
-        else:
-            mount_system()
-            installed = os.path.exists(overlay_magisk)
-            umount_system()
-    return installed
+    with SystemMount():
+        return os.path.exists(overlay_magisk)
 
 
 def is_set_up():
@@ -663,66 +668,61 @@ def install(arch, bits, magisk_channel, workdir=None,
     if is_installed():
         logging.error("Magisk Delta already installed!")
         return
-    if not has_overlay():
-        waydroid_session = get_waydroid_session()
-        if waydroid_session:
-            stop_session_if_needed()
-        mount = mount_system()
+    stop_session_if_needed()
+    with SystemMount() as mount:
         if not mount:
             logging.error(
                 "Failed to mount rootfs. Make sure Waydroid is stopped during the installation.")
             return
-    if workdir and not os.path.exists(workdir):
-        os.makedirs(workdir)
-    with tempfile.TemporaryDirectory(dir=workdir) as tempdir:
-        magisk = download_json(
-            "https://raw.githubusercontent.com/HuskyDG/magisk-files/main/%s.json" % magisk_channel,
-            "Magisk Delta channels")
-        logging.info("Downloading Magisk Delta: %s-%s" % (magisk_channel, magisk["magisk"]["version"]))
-        download_obj(magisk["magisk"]["link"], tempdir, "magisk-delta.apk")
-        logging.info("Extracting Magisk Delta")
-        with zipfile.ZipFile(os.path.join(tempdir, "magisk-delta.apk")) as handle:
-            handle.extractall(tempdir)
-        logging.info("Installing Magisk Delta")
-        libs = os.path.join(tempdir, "lib", arch)
-        if not os.path.exists(MAGISK_OVERLAY):
-            os.makedirs(MAGISK_OVERLAY)
-        for lib in os.listdir(libs):
-            shutil.copyfile(
-                os.path.join(libs, lib),
-                os.path.join(MAGISK_OVERLAY, re.match("lib(.*)\\.so", lib).group(1)),
-            )
-            os.chmod(
-                os.path.join(MAGISK_OVERLAY, re.match("lib(.*)\\.so", lib).group(1)),
-                0o775,
-            )
-        if bits == 64:
-            if arch == "arm64-v8a":
-                magisk32 = os.path.join(
-                    tempdir, "lib", "armeabi-v7a", "libmagisk32.so")
-            elif arch == "x86_64":
-                magisk32 = os.path.join(
-                    tempdir, "lib", "x86", "libmagisk32.so")
-            shutil.copyfile(magisk32, os.path.join(MAGISK_OVERLAY, "magisk32"))
-            os.chmod(os.path.join(MAGISK_OVERLAY, "magisk32"), 0o775)
-        assets = os.path.join(tempdir, "assets")
-        extra_copy = ["util_functions.sh", "addon.d.sh", "boot_patch.sh"]
-        for extra in extra_copy:
-            shutil.copyfile(os.path.join(assets, extra),
-                            os.path.join(MAGISK_OVERLAY, extra))
-        if with_manager:
-            shutil.copyfile(os.path.join(tempdir, "magisk-delta.apk"),
-                            os.path.join(MAGISK_OVERLAY, "magisk.apk"))
+        if workdir and not os.path.exists(workdir):
+            os.makedirs(workdir)
+        with tempfile.TemporaryDirectory(dir=workdir) as tempdir:
+            magisk = download_json(
+                "https://raw.githubusercontent.com/HuskyDG/magisk-files/main/%s.json" % magisk_channel,
+                "Magisk Delta channels")
+            logging.info("Downloading Magisk Delta: %s-%s" % (magisk_channel, magisk["magisk"]["version"]))
+            download_obj(magisk["magisk"]["link"], tempdir, "magisk-delta.apk")
+            logging.info("Extracting Magisk Delta")
+            with zipfile.ZipFile(os.path.join(tempdir, "magisk-delta.apk")) as handle:
+                handle.extractall(tempdir)
+            logging.info("Installing Magisk Delta")
+            libs = os.path.join(tempdir, "lib", arch)
+            if not os.path.exists(MAGISK_OVERLAY):
+                os.makedirs(MAGISK_OVERLAY)
+            for lib in os.listdir(libs):
+                shutil.copyfile(
+                    os.path.join(libs, lib),
+                    os.path.join(MAGISK_OVERLAY, re.match("lib(.*)\\.so", lib).group(1)),
+                )
+                os.chmod(
+                    os.path.join(MAGISK_OVERLAY, re.match("lib(.*)\\.so", lib).group(1)),
+                    0o775,
+                )
+            if bits == 64:
+                if arch == "arm64-v8a":
+                    magisk32 = os.path.join(
+                        tempdir, "lib", "armeabi-v7a", "libmagisk32.so")
+                elif arch == "x86_64":
+                    magisk32 = os.path.join(
+                        tempdir, "lib", "x86", "libmagisk32.so")
+                shutil.copyfile(magisk32, os.path.join(MAGISK_OVERLAY, "magisk32"))
+                os.chmod(os.path.join(MAGISK_OVERLAY, "magisk32"), 0o775)
+            assets = os.path.join(tempdir, "assets")
+            extra_copy = ["util_functions.sh", "addon.d.sh", "boot_patch.sh"]
+            for extra in extra_copy:
+                shutil.copyfile(os.path.join(assets, extra),
+                                os.path.join(MAGISK_OVERLAY, extra))
+            if with_manager:
+                shutil.copyfile(os.path.join(tempdir, "magisk-delta.apk"),
+                                os.path.join(MAGISK_OVERLAY, "magisk.apk"))
 
-        backup_bootanim()
-        patch_bootanim(bits)
-        logging.info("Finishing installation")
-        if not os.path.exists(os.path.join(OVERLAY, "sbin")):
-            os.makedirs(os.path.join(OVERLAY, "sbin"))
-        if not os.path.exists(os.path.join(OVERLAY, "system/addon.d")):
-            os.makedirs(os.path.join(OVERLAY, "system/addon.d"))
-    if not has_overlay():
-        umount_system()
+            backup_bootanim()
+            patch_bootanim(bits)
+            logging.info("Finishing installation")
+            if not os.path.exists(os.path.join(OVERLAY, "sbin")):
+                os.makedirs(os.path.join(OVERLAY, "sbin"))
+            if not os.path.exists(os.path.join(OVERLAY, "system/addon.d")):
+                os.makedirs(os.path.join(OVERLAY, "system/addon.d"))
     if restart_after:
         restart_session_if_needed()
     logging.info("Done")
@@ -767,60 +767,56 @@ def uninstall(restart_after=True):
     if not is_installed():
         logging.error("Magisk Delta is not installed!")
         return
-    if not has_overlay():
-        waydroid_session = get_waydroid_session()
-        if waydroid_session:
-            stop_session_if_needed()
-        mount = mount_system()
+    stop_session_if_needed()
+    with SystemMount() as mount:
         if not mount:
             logging.error(
                 "Failed to mount rootfs. Make sure Waydroid is stopped during the installation.")
             return
-    logging.info("Removing Magisk Delta")
-    shutil.copyfile(os.path.join(INIT_OVERLAY, "bootanim.rc.gz"),
-                    os.path.join(WAYDROID_DIR, "bootanim.rc.gz"))
-    for file in MAGISK_FILES:
-        if os.path.exists(file):
-            if os.path.isdir(file):
-                shutil.rmtree(file)
-            else:
-                os.remove(file)
-        file = re.sub("overlay_rw\\/system\\/", "overlay/", file)
-        if os.path.exists(file):
-            if os.path.isdir(file):
-                shutil.rmtree(file)
-            else:
-                os.remove(file)
+        logging.info("Removing Magisk Delta")
+        shutil.copyfile(os.path.join(INIT_OVERLAY, "bootanim.rc.gz"),
+                        os.path.join(WAYDROID_DIR, "bootanim.rc.gz"))
+        for file in MAGISK_FILES:
+            if os.path.exists(file):
+                if os.path.isdir(file):
+                    shutil.rmtree(file)
+                else:
+                    os.remove(file)
+            file = re.sub("overlay_rw\\/system\\/", "overlay/", file)
+            if os.path.exists(file):
+                if os.path.isdir(file):
+                    shutil.rmtree(file)
+                else:
+                    os.remove(file)
 
-    if os.path.exists(MAGISK_OVERLAY):
-        if os.path.isdir(MAGISK_OVERLAY):
-            shutil.rmtree(MAGISK_OVERLAY)
-        else:
-            os.remove(MAGISK_OVERLAY)
-
-    if os.path.exists(MAGISK_OVERLAY_RW):
-        if os.path.isdir(MAGISK_OVERLAY_RW):
-            shutil.rmtree(MAGISK_OVERLAY_RW)
-        else:
-            os.remove(MAGISK_OVERLAY_RW)
-
-    if has_overlay():
-        if os.path.exists(os.path.join(OVERLAY, "sbin")):
-            if os.path.isdir(os.path.join(OVERLAY, "sbin")):
-                shutil.rmtree(os.path.join(OVERLAY, "sbin"))
+        if os.path.exists(MAGISK_OVERLAY):
+            if os.path.isdir(MAGISK_OVERLAY):
+                shutil.rmtree(MAGISK_OVERLAY)
             else:
-                os.remove(os.path.join(OVERLAY, "sbin"))
+                os.remove(MAGISK_OVERLAY)
 
-        if os.path.exists(os.path.join(OVERLAY, "system/addon.d")):
-            if os.path.isdir(os.path.join(OVERLAY, "system/addon.d")):
-                shutil.rmtree(os.path.join(OVERLAY, "system/addon.d"))
+        if os.path.exists(MAGISK_OVERLAY_RW):
+            if os.path.isdir(MAGISK_OVERLAY_RW):
+                shutil.rmtree(MAGISK_OVERLAY_RW)
             else:
-                os.remove(os.path.join(OVERLAY, "system/addon.d"))
-    if not has_overlay():
-        with gzip.open(os.path.join(WAYDROID_DIR, "bootanim.rc.gz"), "rb") as gzfile:
-            with open(os.path.join(INIT_OVERLAY, "bootanim.rc"), "wb") as rcfile:
-                shutil.copyfileobj(gzfile, rcfile)
-        umount_system()
+                os.remove(MAGISK_OVERLAY_RW)
+
+        if has_overlay():
+            if os.path.exists(os.path.join(OVERLAY, "sbin")):
+                if os.path.isdir(os.path.join(OVERLAY, "sbin")):
+                    shutil.rmtree(os.path.join(OVERLAY, "sbin"))
+                else:
+                    os.remove(os.path.join(OVERLAY, "sbin"))
+
+            if os.path.exists(os.path.join(OVERLAY, "system/addon.d")):
+                if os.path.isdir(os.path.join(OVERLAY, "system/addon.d")):
+                    shutil.rmtree(os.path.join(OVERLAY, "system/addon.d"))
+                else:
+                    os.remove(os.path.join(OVERLAY, "system/addon.d"))
+        if not has_overlay():
+            with gzip.open(os.path.join(WAYDROID_DIR, "bootanim.rc.gz"), "rb") as gzfile:
+                with open(os.path.join(INIT_OVERLAY, "bootanim.rc"), "wb") as rcfile:
+                    shutil.copyfileobj(gzfile, rcfile)
     os.remove(os.path.join(WAYDROID_DIR, "bootanim.rc.gz"))
     if restart_after:
         restart_session_if_needed()
@@ -1077,7 +1073,7 @@ def main():
         elif args.command_magiskhide == "ls":
             cmd.append("ls")
         else:
-            print(parser_hide.print_help())
+            parser_hide.print_help()
         if len(cmd) > 1:
             status, message = magisk_cmd(cmd)
             if status == 1:
