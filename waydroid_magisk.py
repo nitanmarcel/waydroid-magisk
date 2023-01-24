@@ -115,8 +115,10 @@ def download_json(url, scope):
 
 
 def is_running():
-    return get_waydroid_session() is not None or os.path.exists(os.path.join(WAYDROID_DIR, "session.cfg"))
-
+    waydroid_session = get_waydroid_session()
+    if not waydroid_session:
+        return os.path.exists(os.path.join(WAYDROID_DIR, "session.cfg"))
+    return waydroid_session.get("state") is not None
 
 def is_root():
     return os.getuid() == 0
