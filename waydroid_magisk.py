@@ -881,6 +881,9 @@ def ota():
 
 
 def main():
+    if os.path.exists("/sys/fs/selinux") and len(os.listdir("/sys/fs/selinux")) > 0:
+        logging.error("Magisk Delta doesn't support SELinux in Waydroid")
+        return
     if not is_waydroid_initialized():
         logging.error("Waydroid is not initialized.")
         return
