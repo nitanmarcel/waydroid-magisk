@@ -293,7 +293,9 @@ def su(args=None, pipe=True):
         if not args:
             subprocess.run(
                 command,
-                env={"PATH": os.environ['PATH'] + ":/system/bin:/vendor/bin"})
+                env={"PATH": os.environ['PATH'] + ":/system/bin:/vendor/bin"}, 
+                stdout=subprocess.PIPE if pipe else None, 
+                stderr=subprocess.DEVNULL)
         else:
             proc = subprocess.run(
                 command,
@@ -484,10 +486,11 @@ def magisk_status():
     daemon_running = bool(su(["pidof", "magiskd"]))
     logging.info("Daemon: %s" % ("Running" if daemon_running else "Stopped"))
     if not daemon_running:
-        with open("/var/log/syslog", "r") as dmesg:
-            error = "Abort message: 'stack corruption detected (-fstack-protector)'"
-            if dmesg.read().find(error) > -1:
-                logging.error(error)
+        if os.path.isfile("/var/log/syslog"):
+            with open("/var/log/syslog", "r") as dmesg:
+                error = "Abort message: 'stack corruption detected (-fstack-protector)'"
+                if dmesg.read().find(error) > -1:
+                    logging.error(error)
     logging.info("Magisk Version: %s" % su(["magisk", "su", "--version"]))
 
 
