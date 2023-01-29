@@ -258,7 +258,8 @@ def _restart_session_if_needed():
         command = ["lxc-attach", "-P", lxc, "-n",
                    "waydroid", "--", "service", "call", "waydroidhardware", "4"]
         logging.info("Stopping waydroid")
-        subprocess.run(command)
+        subprocess.run(command,
+                       env={"PATH": os.environ['PATH'] + ":/system/bin:/vendor/bin"})
         logging.info("Starting Waydroid")
 
 
