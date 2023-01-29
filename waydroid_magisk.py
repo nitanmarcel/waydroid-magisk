@@ -119,8 +119,6 @@ def mount_system():
 
 
 def umount_system():
-    if has_overlay() or not is_running():
-        return True
     tries = 5
     for x in range(tries):
         with contextlib.suppress(subprocess.CalledProcessError):
