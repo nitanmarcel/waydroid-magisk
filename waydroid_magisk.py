@@ -562,11 +562,17 @@ def remove_module(modname):
 # Installer
 
 def is_installed():
-    overlay_magisk = os.path.join(
-        WAYDROID_DIR, "overlay/system/etc/init/magisk")
-    with SystemMount():
-        return os.path.exists(overlay_magisk)
-
+    if is_running():
+        magisk_dir = os.path.join(WAYDROID_DIR, "rootfs", "system", "etc", "init", "magisk")
+    elif has_overlay():
+        magisk_dir = os.path.join(
+            WAYDROID_DIR, "overlay/system/etc/init/magisk")
+    else:
+        with SystemMount():
+            magisk_dir = os.path.join(
+                WAYDROID_DIR, "overlay/system/etc/init/magisk")
+            return os.path.exists(magisk_dir)
+    return os.path.isdir(magisk_dir)
 
 def is_set_up():
     magisk_init = os.path.join(
