@@ -13,6 +13,7 @@ Magisk Delta manager for Waydroid.
   - [Waydroid won't start](#waydroid-wont-start)
   - [No internet connection](#no-internet-connection)
   - [Magisk modules not working or not showing as installed](#magisk-modules-not-working-or-not-showing-as-installed)
+  - [Magisk Delta fails to patch SELinux policy.](#magisk-delta-fails-to-patch-selinux-policy)
   - [Updating](#updating)
   - [Does Zygisk work?](#does-zygisk-work)
   - [I've enabled Zygisk in Magisk Delta Stable!!](#ive-enabled-zygisk-in-magisk-delta-stable)
@@ -77,6 +78,9 @@ Try restarting Waydroid using either systemd or init (depending on your system).
 ## Magisk modules not working or not showing as installed
 Currently, modules only work with Magisk Delta Canary. Download and install the apk in Waydroid, and update by following the instructions in the "Updating" section below.
 
+## Magisk Delta fails to patch SELinux policy.
+  * Use `waydroid_magisk` to update and setup Magisk.
+
 ## Updating
 * Using Magisk Delta to install Magisk directly into the system partition.
 * Using `waydroid_magisk install --update`.
@@ -105,8 +109,6 @@ __`waydroid-magisk` is developed to be compatible with almost every Linux OS, in
   * or enable ssh `android-gadget-service enable ssh` and ssh to `localhost` (`ssh localhost`)
 * CANNOT LINK EXECUTABLE "service": "/system/lib/libcutils.so" is 32-bit instead of 64-bit
   * `sudo env LD_LIBRARY_PATH=/android/system/lib64/ waydroid_magisk {command failing here}`
-* Magisk Delta fails to patch SELinux policy.
-  * Use `waydroid_magisk` to update and setup Magisk. 
 
 # Credits
 * [Waydroid Team](github.com/waydroid/waydroid)
