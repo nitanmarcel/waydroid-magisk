@@ -996,10 +996,17 @@ def main():
         dest="command_zygisk")
     parser_zygisk_subparser.add_parser(
         "status", help="Return the zygisk status")
-    parser_zygisk_subparser.add_parser(
+    parser_zygisk_enable = parser_zygisk_subparser.add_parser(
         "enable", help="Enable zygisk (requires waydroid restart)")
-    parser_zygisk_subparser.add_parser(
+    parser_zygisk_disable = parser_zygisk_subparser.add_parser(
         "disable", help="Disable zygisk (requires waydroid restart)")
+
+    parser_zygisk_enable.add_argument("-n", "--new-zygisk", action="store_true", help="Enable new way to load Zygisk. "
+                                      "this feature is experimental and it can break some hooking module")
+
+
+    parser_zygisk_disable.add_argument("-n", "--new-zygisk", action="store_true", help="Disable new way to load Zygisk. "
+                                      "this feature is experimental and it can break some hooking module")
 
     args = parser.parse_args()
 
@@ -1093,15 +1100,30 @@ def main():
         if args.command_zygisk == "status":
             result = magisk_sqlite(
                 "SELECT value FROM settings WHERE key == 'zygisk'")
+            result_new = magisk_sqlite(
+                "SELECT value FROM settings WHERE key == 'new_zygisk'")
             state = result and int(result.split("=")[-1]) == 1
-            logging.info("Zygisk is %s" %
-                         ("enabled" if state else "disabled"))
+            state_new = result_new and int(result_new.split("=")[-1]) == 1
+            if not state_new:
+                logging.info("Zygisk is %s" %
+                            ("enabled" if state else "disabled"))
+            else:
+                logging.info("Zygisk is %s (Experimental)" %
+                            ("enabled" if state else "disabled"))
         elif args.command_zygisk == "enable":
             magisk_sqlite(
                 "REPLACE INTO settings (key,value) VALUES('zygisk',1)")
+            if args.new_zygisk:
+                magisk_sqlite(
+                "REPLACE INTO settings (key,value) VALUES('new_zygisk', 1)"
+                        )
         elif args.command_zygisk == "disable":
+            if not args.new_zygisk:
+                magisk_sqlite(
+                    "REPLACE INTO settings (key,value) VALUES('zygisk',0)")
             magisk_sqlite(
-                "REPLACE INTO settings (key,value) VALUES('zygisk',0)")
+                "REPLACE INTO settings (key,value) VALUES('new_zygisk', 0)"
+                    )
         else:
             parser_zygisk.print_help()
     elif args.ota:
