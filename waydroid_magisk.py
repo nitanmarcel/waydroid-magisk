@@ -669,7 +669,7 @@ def patch_bootanim(bits):
 
 
 def install(arch, bits, magisk_channel, workdir=None,
-            restart_after=True, with_manager=False):
+            restart_after=True, with_manager=False, apk_path=None):
     if not is_root():
         logging.error("This command needs to be ran as a priviliged user!")
         return
@@ -685,11 +685,14 @@ def install(arch, bits, magisk_channel, workdir=None,
         if workdir and not os.path.exists(workdir):
             os.makedirs(workdir)
         with tempfile.TemporaryDirectory(dir=workdir) as tempdir:
-            magisk = download_json(
-                "https://raw.githubusercontent.com/HuskyDG/magisk-files/main/%s.json" % magisk_channel,
-                "Magisk Delta channels")
-            logging.info("Downloading Magisk Delta: %s-%s" % (magisk_channel, magisk["magisk"]["version"]))
-            download_obj(magisk["magisk"]["link"], tempdir, "magisk-delta.apk")
+            if not apk_path:
+                magisk = download_json(
+                    "https://raw.githubusercontent.com/HuskyDG/magisk-files/main/%s.json" % magisk_channel,
+                    "Magisk Delta channels")
+                logging.info("Downloading Magisk Delta: %s-%s" % (magisk_channel, magisk["magisk"]["version"]))
+                download_obj(magisk["magisk"]["link"], tempdir, "magisk-delta.apk")
+            else:
+                shutil.copyfile(apk_path, os.path.join(tempdir, "magisk-delta.apk"))
             logging.info("Extracting Magisk Delta")
             with zipfile.ZipFile(os.path.join(tempdir, "magisk-delta.apk")) as handle:
                 handle.extractall(tempdir)
@@ -739,11 +742,11 @@ def install(arch, bits, magisk_channel, workdir=None,
 
 
 def update(arch, bits, magisk_channel, restart_after=False,
-           workdir=None, with_manager=False):
+           workdir=None, with_manager=False, apk_path=None):
     uninstalled = uninstall(restart_after=False)
     if uninstalled:
         installed = install(arch, bits, magisk_channel,
-                            workdir=workdir, with_manager=with_manager)
+                            workdir=workdir, with_manager=with_manager, apk_path=apk_path)
         if installed:
             logging.info(
                 "Manually update Magisk Manager after booting Waydroid.")
@@ -915,11 +918,14 @@ def main():
         "-d", "--debug", action="store_true",
         help="Install Magisk Delta debug channel (default canary)")
     parser_install.add_argument(
+        "-m", "--manager", action="store_true",
+        help="Also install Magisk Delta Manager")
+    parser_install.add_argument(
         "-t", "--tmpdir", nargs="?", type=str, default="tmpdir",
         help="Custom path to use as an temporary  directory")
     parser_install.add_argument(
-        "-m", "--manager", action="store_true",
-        help="Also install Magisk Delta Manager")
+        "--apk", nargs="?", type=str, default=None, 
+        help="Custom Magisk Delta apk to use for installation")
 
     parser_install = subparsers.add_parser(
         "update", help="Update Magisk Delta in Waydroid")
@@ -930,12 +936,15 @@ def main():
         "-d", "--debug", action="store_true",
         help="Update Magisk Delta debug channel (default canary)")
     parser_install.add_argument(
+        "-m", "--manager", action="store_true",
+        help="Also install Magisk Delta Manager")
+    parser_install.add_argument(
         "-t", "--tmpdir", nargs="?", type=str, default="tmpdir",
         help="Custom path to use as an temporary  directory")
     parser_install.add_argument(
-        "-m", "--manager", action="store_true",
-        help="Also install Magisk Delta Manager")
-
+        "--apk", nargs="?", type=str, default=None, 
+        help="Custom Magisk Delta apk to use for installation")
+    
     subparsers.add_parser("setup", help="Setup magisk env")
 
     subparsers.add_parser("remove", help="Remove Magisk Delta from Waydroid")
@@ -1018,11 +1027,11 @@ def main():
         install_fnc = update if args.command == "update" else install
         if args.tmpdir == "tmpdir":
             install_fnc(arch, bits, magisk_channel, restart_after=True,
-                        with_manager=args.manager)
+                        with_manager=args.manager, apk_path=args.apk)
         else:
             install_fnc(
                 arch, bits, magisk_channel, workdir=args.tmpdir,
-                restart_after=True, with_manager=args.manager)
+                restart_after=True, with_manager=args.manager, apk_path=args.apk)
     elif args.command == "setup":
         setup()
     elif args.command == "remove":
