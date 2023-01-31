@@ -785,8 +785,9 @@ def uninstall(restart_after=True):
                 "Failed to mount rootfs. Make sure Waydroid is stopped during the installation.")
             return
         logging.info("Removing Magisk Delta")
-        shutil.copyfile(os.path.join(INIT_OVERLAY, "bootanim.rc.gz"),
-                        os.path.join(WAYDROID_DIR, "bootanim.rc.gz"))
+        if not has_overlay():
+            shutil.copyfile(os.path.join(INIT_OVERLAY, "bootanim.rc.gz"),
+                            os.path.join(WAYDROID_DIR, "bootanim.rc.gz"))
         for file in MAGISK_FILES:
             if os.path.exists(file):
                 if os.path.isdir(file):
@@ -824,7 +825,7 @@ def uninstall(restart_after=True):
                     shutil.rmtree(os.path.join(OVERLAY, "system/addon.d"))
                 else:
                     os.remove(os.path.join(OVERLAY, "system/addon.d"))
-        if not has_overlay():
+        else:
             with gzip.open(os.path.join(WAYDROID_DIR, "bootanim.rc.gz"), "rb") as gzfile:
                 with open(os.path.join(INIT_OVERLAY, "bootanim.rc"), "wb") as rcfile:
                     shutil.copyfileobj(gzfile, rcfile)
