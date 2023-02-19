@@ -58,7 +58,7 @@ Magisk Delta manager for Waydroid.
 6. **To avoid any issues it's important to read [FAQ](#faq) before using Magisk Delta on waydroid.**
 
 # Usage
-* a detailed list of all the available commands can be found in [API.md](https://github.com/nitanmarcel/waydroid-magisk/blob/main/README.md)
+* a detailed list of all the available commands can be found in [API.md](https://github.com/nitanmarcel/waydroid-magisk/blob/main/API.md)
 
 # FAQ
 
