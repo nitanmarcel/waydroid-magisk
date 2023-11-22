@@ -1,3 +1,9 @@
+waydroid-magisk (1.2.11) bullseye; urgency=medium
+
+  * waydroid_magisk: temporary change magisk-delta URL to magisk-delta.old
+
+ -- Marcel Alexandru Nitan <nitan.marcel@protonmail.com>  Wed, 22 Nov 2023 10:54:50 +0200
+
 waydroid-magisk (1.2.10) bullseye; urgency=medium
 
   * waydroid_magisk: add support for enabling new zygisk (experimental)
