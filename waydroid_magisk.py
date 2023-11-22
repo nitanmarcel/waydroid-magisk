@@ -35,7 +35,7 @@ logging.basicConfig(
 
 VERSION = '1.2.10'
 
-MAGISK_HOST = "https://huskydg.github.io/magisk-files/"
+MAGISK_HOST = "https://huskydg.github.io/magisk-files.old/"
 MAGISK_CANARY = "%s/app-release.apk" % MAGISK_HOST
 
 WAYDROID_DIR = "/var/lib/waydroid/"
