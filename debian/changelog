@@ -1,3 +1,13 @@
+
+waydroid-magisk (1.2.12) bullseye; urgency=medium
+
+  * Revert "Temporarily change magisk-delta URL to magisk-delta.old"
+  * Default to canary if release has been given as target release channel
+  *  Magisk Delta has been upstream renamed to Kitsune Mask
+
+ -- Marcel Alexandru Nitan <nitan.marcel@protonmail.com>  Thu, 30 Nov 2023 10:54:50 +0200
+
+
 waydroid-magisk (1.2.11) bullseye; urgency=medium
 
   * waydroid_magisk: temporary change magisk-delta URL to magisk-delta.old
