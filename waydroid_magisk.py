@@ -676,6 +676,9 @@ def install(arch, bits, magisk_channel, workdir=None,
     if is_installed():
         logging.error("Magisk Delta already installed!")
         return
+    if magisk_channel == "release":
+        logging.info("Release channel does not exist, defaulting to canary")
+        magisk_channel == "canary"
     stop_session_if_needed()
     with SystemMount() as mount:
         if not mount:
