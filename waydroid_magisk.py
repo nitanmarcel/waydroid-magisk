@@ -273,7 +273,7 @@ def su(args=None, pipe=True):
         logging.error("Waydroid session is not running")
         return
     if not is_installed():
-        logging.error("Magisk Delta is not installed")
+        logging.error("Kitsune Mask is not installed")
         return
     result = ""
     waydroid_session = get_waydroid_session()
@@ -318,7 +318,7 @@ def magisk_cmd(args, pipe=True):
         logging.error("Waydroid session is not running")
         return
     if not is_installed():
-        logging.error("Magisk Delta is not installed")
+        logging.error("Kitsune Mask is not installed")
         return
     waydroid_session = get_waydroid_session()
     with WaydroidFreezeUnfreeze(waydroid_session):
@@ -347,7 +347,7 @@ def magisk_sqlite(query):
         logging.error("Waydroid session is not running")
         return
     if not is_installed():
-        logging.error("Magisk Delta is not installed")
+        logging.error("Kitsune Mask is not installed")
         return
     result = ""
     waydroid_session = get_waydroid_session()
@@ -372,7 +372,7 @@ def list_modules():
         logging.error("Waydroid session is not running")
         return
     if not is_installed():
-        logging.error("Magisk Delta is not installed")
+        logging.error("Kitsune Mask is not installed")
         return
     waydroid_session = get_waydroid_session()
     with WaydroidFreezeUnfreeze(waydroid_session):
@@ -392,7 +392,7 @@ def remove_module(modname):
         logging.error("Waydroid session is not running")
         return
     if not is_installed():
-        logging.error("Magisk Delta is not installed")
+        logging.error("Kitsune Mask is not installed")
         return
     waydroid_session = get_waydroid_session()
     with WaydroidFreezeUnfreeze(waydroid_session):
@@ -427,7 +427,7 @@ def magisk_log(save=False):
         logging.error("Waydroid session is not running")
         return
     if not is_installed():
-        logging.error("Magisk Delta is not installed")
+        logging.error("Kitsune Mask is not installed")
         return
     if not save:
         su(["tail", "-f", "/cache/magisk.log"], False)
@@ -480,7 +480,7 @@ def magisk_status():
         logging.error("Waydroid session is not running")
         return
     if not is_installed():
-        logging.error("Magisk Delta is not installed")
+        logging.error("Kitsune Mask is not installed")
         return
     daemon_running = bool(su(["pidof", "magiskd"]))
     logging.info("Daemon: %s" % ("Running" if daemon_running else "Stopped"))
@@ -501,7 +501,7 @@ def install_module(modpath):
         logging.error("Waydroid session is not running")
         return
     if not is_installed():
-        logging.error("Magisk Delta is not installed")
+        logging.error("Kitsune Mask is not installed")
         return
     waydroid_session = get_waydroid_session()
     tmpdir = os.path.join(xdg_data_home(), "waydroid",
@@ -524,7 +524,7 @@ def list_modules():
         logging.error("Waydroid session is not running")
         return
     if not is_installed():
-        logging.error("Magisk Delta is not installed")
+        logging.error("Kitsune Mask is not installed")
         return
     waydroid_session = get_waydroid_session()
     with WaydroidFreezeUnfreeze(waydroid_session):
@@ -544,7 +544,7 @@ def remove_module(modname):
         logging.error("Waydroid session is not running")
         return
     if not is_installed():
-        logging.error("Magisk Delta is not installed")
+        logging.error("Kitsune Mask is not installed")
         return
     waydroid_session = get_waydroid_session()
     with WaydroidFreezeUnfreeze(waydroid_session):
@@ -674,7 +674,7 @@ def install(arch, bits, magisk_channel, workdir=None,
         logging.error("This command needs to be ran as a priviliged user!")
         return
     if is_installed():
-        logging.error("Magisk Delta already installed!")
+        logging.error("Kitsune Mask already installed!")
         return
     if magisk_channel == "release":
         logging.info("Release channel does not exist, defaulting to canary")
@@ -691,15 +691,15 @@ def install(arch, bits, magisk_channel, workdir=None,
             if not apk_path:
                 magisk = download_json(
                     "https://raw.githubusercontent.com/HuskyDG/magisk-files/main/%s.json" % magisk_channel,
-                    "Magisk Delta channels")
-                logging.info("Downloading Magisk Delta: %s-%s" % (magisk_channel, magisk["magisk"]["version"]))
+                    "Kitsune Mask channels")
+                logging.info("Downloading Kitsune Mask: %s-%s" % (magisk_channel, magisk["magisk"]["version"]))
                 download_obj(magisk["magisk"]["link"], tempdir, "magisk-delta.apk")
             else:
                 shutil.copyfile(apk_path, os.path.join(tempdir, "magisk-delta.apk"))
-            logging.info("Extracting Magisk Delta")
+            logging.info("Extracting Kitsune Mask")
             with zipfile.ZipFile(os.path.join(tempdir, "magisk-delta.apk")) as handle:
                 handle.extractall(tempdir)
-            logging.info("Installing Magisk Delta")
+            logging.info("Installing Kitsune Mask")
             libs = os.path.join(tempdir, "lib", arch)
             if not os.path.exists(MAGISK_OVERLAY):
                 os.makedirs(MAGISK_OVERLAY)
@@ -741,7 +741,7 @@ def install(arch, bits, magisk_channel, workdir=None,
         restart_session_if_needed()
     logging.info("Done")
     logging.info(
-        "Run waydroid_magisk setup after waydroid starts again or install Magisk Delta Manager")
+        "Run waydroid_magisk setup after waydroid starts again or install Kitsune Mask Manager")
 
 
 def update(arch, bits, magisk_channel, restart_after=False,
@@ -763,7 +763,7 @@ def setup():
         logging.error("Waydroid session is not running")
         return
     if not is_installed():
-        logging.error("Magisk Delta is not installed")
+        logging.error("Kitsune Mask is not installed")
         return
     su(["rm", "-rf", "/data/adb/magisk"])
     su(["mkdir", "-p", "/data/adb/magisk"])
@@ -779,7 +779,7 @@ def uninstall(restart_after=True):
         logging.error("This command needs to be ran as a priviliged user!")
         return
     if not is_installed():
-        logging.error("Magisk Delta is not installed!")
+        logging.error("Kitsune Mask is not installed!")
         return
     stop_session_if_needed()
     with SystemMount() as mount:
@@ -787,7 +787,7 @@ def uninstall(restart_after=True):
             logging.error(
                 "Failed to mount rootfs. Make sure Waydroid is stopped during the installation.")
             return
-        logging.info("Removing Magisk Delta")
+        logging.info("Removing Kitsune Mask")
         if not has_overlay():
             shutil.copyfile(os.path.join(INIT_OVERLAY, "bootanim.rc.gz"),
                             os.path.join(WAYDROID_DIR, "bootanim.rc.gz"))
@@ -858,7 +858,7 @@ def ota():
             shutil.copy(source, dest)
 
     def remove(source):
-        logging.info("Removing Magisk Delta File '%s'" %
+        logging.info("Removing Kitsune Mask File '%s'" %
                      os.path.basename(source))
         dest = re.sub("overlay_rw\\/system\\/", "overlay/", source)
         if os.path.exists(dest):
@@ -895,7 +895,7 @@ def ota():
 
 def main():
     if os.path.exists("/sys/fs/selinux") and len(os.listdir("/sys/fs/selinux")) > 0:
-        logging.error("Magisk Delta doesn't support SELinux in Waydroid")
+        logging.error("Kitsune Mask doesn't support SELinux in Waydroid")
         return
     if not is_waydroid_initialized():
         logging.error("Waydroid is not initialized.")
@@ -903,7 +903,7 @@ def main():
     arch, bits = get_arch()
 
     parser = argparse.ArgumentParser(
-        description="Magisk Delta installer and manager for Waydroid",
+        description="Kitsune Mask installer and manager for Waydroid",
         prog="waydroid_magisk")
     parser.add_argument("-v", "--version",
                         action="store_true", help="Print version")
@@ -914,51 +914,51 @@ def main():
     subparsers = parser.add_subparsers(dest="command")
     subparsers.add_parser("status", help="Query Magisk status")
     parser_install = subparsers.add_parser(
-        "install", help="Install Magisk Delta in Waydroid")
+        "install", help="Install Kitsune Mask in Waydroid")
     parser_install.add_argument(
         "-c", "--canary", action="store_true",
-        help="Install Magisk Delta canary channel (default canary)")
+        help="Install Kitsune Mask canary channel (default canary)")
     parser_install.add_argument(
         "-d", "--debug", action="store_true",
-        help="Install Magisk Delta debug channel (default canary)")
+        help="Install Kitsune Mask debug channel (default canary)")
     parser_install.add_argument(
         "-m", "--manager", action="store_true",
-        help="Also install Magisk Delta Manager")
+        help="Also install Kitsune Mask Manager")
     parser_install.add_argument(
         "-t", "--tmpdir", nargs="?", type=str, default="tmpdir",
         help="Custom path to use as an temporary  directory")
     parser_install.add_argument(
         "--apk", nargs="?", type=str, default=None, 
-        help="Custom Magisk Delta apk to use for installation")
+        help="Custom Kitsune Mask apk to use for installation")
 
     parser_install = subparsers.add_parser(
-        "update", help="Update Magisk Delta in Waydroid")
+        "update", help="Update Kitsune Mask in Waydroid")
     parser_install.add_argument(
         "-c", "--canary", action="store_true",
-        help="Update Magisk Delta canary channel (default canary)")
+        help="Update Kitsune Mask canary channel (default canary)")
     parser_install.add_argument(
         "-d", "--debug", action="store_true",
-        help="Update Magisk Delta debug channel (default canary)")
+        help="Update Kitsune Mask debug channel (default canary)")
     parser_install.add_argument(
         "-m", "--manager", action="store_true",
-        help="Also install Magisk Delta Manager")
+        help="Also install Kitsune Mask Manager")
     parser_install.add_argument(
         "-t", "--tmpdir", nargs="?", type=str, default="tmpdir",
         help="Custom path to use as an temporary  directory")
     parser_install.add_argument(
         "--apk", nargs="?", type=str, default=None, 
-        help="Custom Magisk Delta apk to use for installation")
+        help="Custom Kitsune Mask apk to use for installation")
     
     subparsers.add_parser("setup", help="Setup magisk env")
 
-    subparsers.add_parser("remove", help="Remove Magisk Delta from Waydroid")
+    subparsers.add_parser("remove", help="Remove Kitsune Mask from Waydroid")
 
     parser_log = subparsers.add_parser("log", help="Follow magisk log.")
     parser_log.add_argument(
         "-s", "--save", action="store_true", help="Save magisk log locally")
 
     parser_modules = subparsers.add_parser(
-        "module", help="Manage modules in Magisk Delta")
+        "module", help="Manage modules in Kitsune Mask")
     parser_modules_subparser = parser_modules.add_subparsers(
         dest="command_module")
     parser_modules_install = parser_modules_subparser.add_parser(
@@ -972,7 +972,7 @@ def main():
     parser_modules_list = parser_modules_subparser.add_parser(
         "list", help="List all installed magisk modules")
 
-    parser_su = subparsers.add_parser("su", help="Manage su in Magisk Delta")
+    parser_su = subparsers.add_parser("su", help="Manage su in Kitsune Mask")
     parser_su_subparser = parser_su.add_subparsers(dest="command_su")
     parser_su_subparser.add_parser("shell", help="Opens the magisk su shell")
     parser_su_subparser.add_parser(

@@ -1,5 +1,5 @@
 # Waydroid Magisk
-Magisk Delta manager for Waydroid.
+Kitsune Mask manager for Waydroid.
 
 - [Waydroid Magisk](#waydroid-magisk)
 - [Installing Magisk on Waydroid](#installing-magisk-on-waydroid)
@@ -13,12 +13,12 @@ Magisk Delta manager for Waydroid.
   - [Waydroid won't start](#waydroid-wont-start)
   - [No internet connection](#no-internet-connection)
   - [Magisk modules not working or not showing as installed](#magisk-modules-not-working-or-not-showing-as-installed)
-  - [Magisk Delta fails to patch SELinux policy.](#magisk-delta-fails-to-patch-selinux-policy)
+  - [Kitsune Mask fails to patch SELinux policy.](#magisk-delta-fails-to-patch-selinux-policy)
   - [Updating](#updating)
   - [Does Zygisk work?](#does-zygisk-work)
-  - [I've enabled Zygisk in Magisk Delta Stable!!](#ive-enabled-zygisk-in-magisk-delta-stable)
+  - [I've enabled Zygisk in Kitsune Mask Stable!!](#ive-enabled-zygisk-in-magisk-delta-stable)
   - [How is this different from other scripts?](#how-is-this-different-from-other-scripts)
-  - [What is Magisk Delta?](#what-is-magisk-delta)
+  - [What is Kitsune Mask?](#what-is-magisk-delta)
   - [Arch Linux](#arch-linux)
   - [Ubuntu Touch](#ubuntu-touch)
 - [Credits](#credits)
@@ -37,9 +37,9 @@ Magisk Delta manager for Waydroid.
 3. `sudo apt update`
 4. `sudo apt install waydroid-magisk` 
 5. run `sudo waydroid_magisk install` to install Magisk
-  * `waydroid-magisk` can also be used as a manager. If you want to use Magisk Delta Manager instead use the install command with `--manager` argument.
+  * `waydroid-magisk` can also be used as a manager. If you want to use Kitsune Mask Manager instead use the install command with `--manager` argument.
 6. start waydroid and run `sudo waydroid_magisk setup` to trigger first time setup.
-7. **To avoid any issues it's important to read [FAQ](#faq) before using Magisk Delta on waydroid.**
+7. **To avoid any issues it's important to read [FAQ](#faq) before using Kitsune Mask on waydroid.**
 
 ### From GitHub
 1. git clone `https://github.com/nitanmarcel/waydroid-magisk-installer/`
@@ -47,7 +47,7 @@ Magisk Delta manager for Waydroid.
   * If using upstart (e.g Ubuntu Touch 16.04)
   * run `sudo make install USE_UPSTART=1`
 3. run `sudo waydroid_magisk install` to install Magisk
-  * `waydroid-magisk` can also be used as a manager. If you want to use Magisk Delta Manager instead use the install command with `--manager` argument.
+  * `waydroid-magisk` can also be used as a manager. If you want to use Kitsune Mask Manager instead use the install command with `--manager` argument.
   * Ubuntu Touch requires setting an working directory in `/home/phablet`
   * `sudo waydroid_magisk install --tmpdir /home/phablet/magisk_waydroid`
 
@@ -55,7 +55,7 @@ Magisk Delta manager for Waydroid.
 5. enable ota survival service
   * For systemd `sudo systemctl enable --now waydroid_magisk_ota.service`
   * For upstart `sudo start waydroid_magisk_ota.service`
-6. **To avoid any issues it's important to read [FAQ](#faq) before using Magisk Delta on waydroid.**
+6. **To avoid any issues it's important to read [FAQ](#faq) before using Kitsune Mask on waydroid.**
 
 # Usage
 * a detailed list of all the available commands can be found in [API.md](https://github.com/nitanmarcel/waydroid-magisk/blob/main/API.md)
@@ -76,29 +76,29 @@ Note that Waydroid may take longer to boot due to Magisk being set up.
 Try restarting Waydroid using either systemd or init (depending on your system).
 
 ## Magisk modules not working or not showing as installed
-Currently, modules only work with Magisk Delta Canary. Download and install the apk in Waydroid, and update by following the instructions in the "Updating" section below.
+Currently, modules only work with Kitsune Mask Canary. Download and install the apk in Waydroid, and update by following the instructions in the "Updating" section below.
 
-## Magisk Delta fails to patch SELinux policy.
+## Kitsune Mask fails to patch SELinux policy.
   * Use `waydroid_magisk` to update and setup Magisk.
 
 ## Updating
-* Using Magisk Delta to install Magisk directly into the system partition.
+* Using Kitsune Mask to install Magisk directly into the system partition.
 * Using `waydroid_magisk install --update`.
 
 ## Does Zygisk work?
-Zygisk only works with Magisk Delta Canary which gets installed by default.
+Zygisk only works with Kitsune Mask Canary which gets installed by default.
 
-## I've enabled Zygisk in Magisk Delta Stable!!
+## I've enabled Zygisk in Kitsune Mask Stable!!
 * Run `waydroid_magisk zygisk disable` - to disable zygisk.
 
 ## How is this different from other scripts?
-magisk_waydroid is a Magisk Delta manager, bringing all the features from Magisk Delta manager in your command line. 
+magisk_waydroid is a Kitsune Mask manager, bringing all the features from Kitsune Mask manager in your command line. 
 
-## What is Magisk Delta?
-Magisk Delta is a fork of the official Magisk Manager with the old Magisk Hide feature re-added and other new features. You can find a list of differences between Magisk Delta and official Magisk [here](https://github.com/HuskyDG/magisk-files/blob/main/note_stable.md#diffs-to-official-magisk).
+## What is Kitsune Mask?
+Kitsune Mask is a fork of the official Magisk Manager with the old Magisk Hide feature re-added and other new features. You can find a list of differences between Kitsune Mask and official Magisk [here](https://github.com/HuskyDG/magisk-files/blob/main/note_stable.md#diffs-to-official-magisk).
 
 ## Arch Linux
-On arch based distributions, `linux-xanmod-anbox` with `linux-xanmod-anbox-headers` (needs `psi=1` in cmdline) from chaotic AUR is recommended, otherwise Magisk Delta might not work properly.
+On arch based distributions, `linux-xanmod-anbox` with `linux-xanmod-anbox-headers` (needs `psi=1` in cmdline) from chaotic AUR is recommended, otherwise Kitsune Mask might not work properly.
 
 ## Ubuntu Touch
 __`waydroid-magisk` is developed to be compatible with almost every Linux OS, including Ubuntu Touch. But a few issues can still occur such as (workarounds included).__
@@ -112,5 +112,5 @@ __`waydroid-magisk` is developed to be compatible with almost every Linux OS, in
 
 # Credits
 * [Waydroid Team](github.com/waydroid/waydroid)
-* Magisk Delta Maintainer - [HuskyDG](https://github.com/HuskyDG)
+* Kitsune Mask Maintainer - [HuskyDG](https://github.com/HuskyDG)
 * [Others](https://huskydg.github.io/magisk-files/#credits)

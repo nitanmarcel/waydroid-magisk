@@ -16,34 +16,34 @@
 
 ## install
 
-* Install Magisk Delta in Waydroid
+* Install Kitsune Mask in Waydroid
 ```
 usage: waydroid_magisk install [-h] [-u] [-c] [-d] [-t [TMPDIR]]
 
 options:
   -h, --help            show this help message and exit
-  -c, --canary          Install Magisk Delta canary channel (default canary)
-  -d, --debug           Install Magisk Delta debug channel (default canary)
+  -c, --canary          Install Kitsune Mask canary channel (default canary)
+  -d, --debug           Install Kitsune Mask debug channel (default canary)
   -t [TMPDIR], --tmpdir [TMPDIR]
                         Custom path to use as an temporary directory
 ```
 
 ## update
 
-* Update Magisk Delta in Waydroid
+* Update Kitsune Mask in Waydroid
 ```
 usage: waydroid_magisk update [-h] [-c] [-d] [-t [TMPDIR]] [-m]
 
 options:
   -h, --help            show this help message and exit
-  -c, --canary          Update Magisk Delta canary channel (default canary)
-  -d, --debug           Update Magisk Delta debug channel (default canary)
+  -c, --canary          Update Kitsune Mask canary channel (default canary)
+  -d, --debug           Update Kitsune Mask debug channel (default canary)
   -t [TMPDIR], --tmpdir [TMPDIR]
                         Custom path to use as an temporary directory
 ```
 
 ## remove
-* Remove Magisk Delta from Waydroid
+* Remove Kitsune Mask from Waydroid
 ```
 usage: waydroid_magisk remove [-h]
 
@@ -52,7 +52,7 @@ options:
 ```
 
 ##  module
-* Manage modules in Magisk Delta
+* Manage modules in Kitsune Mask
 ```
 usage: waydroid_magisk module [-h] {install,remove,list} ...
 
@@ -67,7 +67,7 @@ options:
 ```
 
 ## su
-* Manage su in Magisk Delta
+* Manage su in Kitsune Mask
 ```
 usage: waydroid_magisk su [-h] {shell,list,allow,deny} ...
 

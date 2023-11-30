@@ -16,7 +16,7 @@ build:
 	@echo "Nothing to build, run 'make install' to copy the files!"
 check_selinux:
 	if [ -f /sys/fs/selinux/enforce ]; then \
-		echo "Magisk Delta is not compatible with SELinux on Waydroid."; \
+		echo "Kitsune Mask is not compatible with SELinux on Waydroid."; \
 		exit 1; \
 	fi
 install: check_selinux
