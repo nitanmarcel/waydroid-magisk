@@ -95,7 +95,7 @@ Zygisk only works with Kitsune Mask Canary which gets installed by default.
 magisk_waydroid is a Kitsune Mask manager, bringing all the features from Kitsune Mask manager in your command line. 
 
 ## What is Kitsune Mask?
-Kitsune Mask is a fork of the official Magisk Manager with the old Magisk Hide feature re-added and other new features. You can find a list of differences between Kitsune Mask and official Magisk [here](https://github.com/HuskyDG/magisk-files/blob/main/note_stable.md#diffs-to-official-magisk).
+Kitsune Mask is a fork of the official Magisk Manager with the old Magisk Hide feature re-added and other new features. You can find a list of differences between Kitsune Mask and official Magisk [here](https://github.com/HuskyDG/magisk-files/blob/main/note.md#diffs-to-official-magisk).
 
 ## Arch Linux
 On arch based distributions, `linux-xanmod-anbox` with `linux-xanmod-anbox-headers` (needs `psi=1` in cmdline) from chaotic AUR is recommended, otherwise Kitsune Mask might not work properly.
