@@ -54,7 +54,7 @@ Kitsune Mask manager for Waydroid.
 4. start waydroid and run `sudo waydroid_magisk setup` to trigger first time setup.
 5. enable ota survival service
   * For systemd `sudo systemctl enable --now waydroid_magisk_ota.service`
-  * For upstart `sudo start waydroid_magisk_ota.service`
+  * For upstart `sudo systemctl start waydroid_magisk_ota.service`
 6. **To avoid any issues it's important to read [FAQ](#faq) before using Kitsune Mask on waydroid.**
 
 # Usage
